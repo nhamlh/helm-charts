@@ -121,7 +121,7 @@ secrets:
 # =============================================================================
 
 siteUrl: "http://localhost"
-deployment: ""  # set to "hobby" for simplified single-DB persons migration path
+deployment: "" # set to "hobby" for simplified single-DB persons migration path
 
 # Gateway API configuration.
 # TLS is handled by the Gateway infrastructure (not this chart).
@@ -196,7 +196,7 @@ features:
     host: ""
     port: 7233
     namespace: "default"
-    secretKey: ""  # falls back to secrets.secretKey if empty
+    secretKey: "" # falls back to secrets.secretKey if empty
 
   # Surveys / remote config edge endpoints
   hypercache:
@@ -371,8 +371,6 @@ personhogRouter:
 
 # -- Migration job
 migration:
-  # Set to true to re-run on every upgrade (default: runs once per install)
-  runOnUpgrade: false
   resources: {}
   extraEnv: {}
   backoffLimit: 6
