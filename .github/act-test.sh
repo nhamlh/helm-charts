@@ -26,7 +26,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WORKFLOW="$SCRIPT_DIR/workflows/release-charts.yml"
 EVENT_FILE="$SCRIPT_DIR/act-push-event.json"
-VARS_FILE="$SCRIPT_DIR/act.vars"
 SECRETS_FILE="$SCRIPT_DIR/act.secrets"
 CHART_DIR="$REPO_ROOT/app"
 CHART_YAML="$CHART_DIR/Chart.yaml"
@@ -109,7 +108,6 @@ run_act() {
   DOCKER_HOST="$docker_host" act push \
     -W "$WORKFLOW" \
     -e "$EVENT_FILE" \
-    --var-file "$VARS_FILE" \
     --secret-file "$SECRETS_FILE" \
     -P ubuntu-latest=-self-hosted \
     2>&1
@@ -143,23 +141,25 @@ test_happy_path() {
   restore_version "$orig_ver"
   update_event_payload
 
-  # All pre-GCP steps must pass. GCP auth will fail locally (WIF requires
-  # real GitHub OIDC tokens only injected by GitHub Actions runners) — that
-  # is expected and does not indicate a workflow logic error.
-  local pre_gcp_ok=true
-  echo "$output" | grep -q "Version OK (patch bump)"   || pre_gcp_ok=false
-  echo "$output" | grep -q "✅  Success - Main Helm lint" || pre_gcp_ok=false
-  echo "$output" | grep -q "Generate release notes"    || pre_gcp_ok=false
+  # All steps up to the GHCR push must pass. The GHCR login/push may fail
+  # locally when act.secrets holds a placeholder token — that is expected and
+  # does not indicate a workflow logic error. With a real token the push would
+  # publish a chart to ghcr.io, so avoid the happy path with a live token
+  # unless you actually intend to publish.
+  local pre_push_ok=true
+  echo "$output" | grep -q "Version OK (patch bump)"     || pre_push_ok=false
+  echo "$output" | grep -q "✅  Success - Main Helm lint"  || pre_push_ok=false
+  echo "$output" | grep -q "Generate release notes"      || pre_push_ok=false
 
-  local gcp_failure
-  gcp_failure=$(echo "$output" | grep "Authenticate to GCP" | grep "❌" || true)
+  local push_failure
+  push_failure=$(echo "$output" | grep -E "(GitHub Container Registry|Push chart to GHCR)" | grep "❌" || true)
 
-  if $pre_gcp_ok && [ -n "$gcp_failure" ]; then
-    pass "happy path ($orig_ver → $new_ver) — all pre-GCP steps passed; GCP auth skipped locally (expected)"
+  if $pre_push_ok && [ -n "$push_failure" ]; then
+    pass "happy path ($orig_ver → $new_ver) — all pre-push steps passed; GHCR push skipped locally (expected)"
   elif act_succeeded "$output"; then
     pass "happy path ($orig_ver → $new_ver) — all steps passed"
   else
-    fail "happy path — unexpected failure before GCP auth step:"
+    fail "happy path — unexpected failure before GHCR push step:"
     echo "$output" | grep -E "(error|❌|✅|Run Main)" | tail -20
     return 1
   fi
