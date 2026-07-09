@@ -1,0 +1,59 @@
+{{- if .Values.features.hypercache.enabled }}
+{{- $component := "hypercache-server" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.hypercache.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      containers:
+        - name: {{ $component }}
+          image: "ghcr.io/posthog/posthog/hypercache-server:{{ .Values.image.capture.tag }}"
+          imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
+          env:
+            - name: ADDRESS
+              value: "0.0.0.0:3002"
+            - name: REDIS_URL
+              value: {{ .Values.redis.url | quote }}
+            {{- with .Values.hypercache.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: 3002
+          {{- with (coalesce .Values.hypercache.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3002
+      targetPort: 3002
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "posthog-minimal.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+{{- end }}

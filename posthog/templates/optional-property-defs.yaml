@@ -1,0 +1,63 @@
+{{- if .Values.features.propertyDefs.enabled }}
+{{- $component := "property-defs-rs" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.propertyDefs.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      containers:
+        - name: {{ $component }}
+          image: "ghcr.io/posthog/posthog/property-defs-rs:{{ .Values.image.capture.tag }}"
+          imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
+          env:
+            - name: DATABASE_URL
+              value: {{ .Values.postgres.url | quote }}
+            - name: KAFKA_HOSTS
+              value: {{ .Values.kafka.hosts | quote }}
+            - name: BIND_PORT
+              value: "3301"
+            - name: PERSONHOG_ADDR
+              value: "{{ include "posthog-minimal.component.fullname" (dict "component" "personhog-router" "Chart" .Chart "Release" .Release "Values" .Values) }}:50052"
+            {{- with .Values.propertyDefs.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: 3301
+          {{- with (coalesce .Values.propertyDefs.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3301
+      targetPort: 3301
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "posthog-minimal.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+{{- end }}

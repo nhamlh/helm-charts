@@ -1,0 +1,83 @@
+{{- if .Values.kafkaInit.enabled }}
+{{- $component := "kafka-init" }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-3"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: {{ .Values.kafkaInit.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: kafka-init
+          image: "{{ .Values.kafkaInit.image.repository }}:{{ .Values.kafkaInit.image.tag }}"
+          imagePullPolicy: {{ .Values.kafkaInit.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -x
+              echo "Waiting for Kafka broker to accept connections..."
+              TIMEOUT=60
+              ELAPSED=0
+              until rpk topic list --brokers {{ .Values.kafka.hosts }} 2>/dev/null; do
+                echo "Kafka broker not ready yet (elapsed: ${ELAPSED}s)..."
+                sleep 2
+                ELAPSED=$((ELAPSED + 2))
+                if [ $ELAPSED -ge $TIMEOUT ]; then
+                  echo "Timeout waiting for Kafka broker after ${TIMEOUT}s"
+                  exit 1
+                fi
+              done
+              echo "Kafka broker is accepting requests, creating topics..."
+              TOPICS="clickhouse_events_json \
+                clickhouse_ai_events_json \
+                clickhouse_heatmap_events \
+                clickhouse_ingestion_warnings \
+                events_plugin_ingestion_dlq \
+                events_plugin_ingestion_overflow \
+                events_plugin_ingestion_async \
+                ingestion-clientwarnings-main-1 \
+                heatmaps_ingestion \
+                clickhouse_groups \
+                clickhouse_person \
+                clickhouse_person_distinct_id \
+                clickhouse_app_metrics2 \
+                log_entries \
+                clickhouse_tophog"
+              for topic in $TOPICS; do
+                if rpk topic create "$topic" --brokers {{ .Values.kafka.hosts }} -p 1 -r 1 2>&1; then
+                  echo "Topic $topic created successfully"
+                else
+                  if rpk topic list --brokers {{ .Values.kafka.hosts }} | grep -q "$topic"; then
+                    echo "Topic $topic already exists, continuing"
+                  else
+                    echo "Failed to create topic $topic"
+                    exit 1
+                  fi
+                fi
+              done
+              echo "Final topic list:"
+              rpk topic list --brokers {{ .Values.kafka.hosts }}
+              echo "Topics ready"
+          {{- with (coalesce .Values.kafkaInit.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

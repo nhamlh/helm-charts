@@ -1,0 +1,164 @@
+{{- if .Values.features.sessionReplay.enabled }}
+{{- $component := "replay-capture" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.replayCapture.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      containers:
+        - name: {{ $component }}
+          image: "{{ .Values.image.capture.repository }}:{{ .Values.image.capture.tag }}"
+          imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
+          env:
+            {{- include "posthog-minimal.rust.env" . | nindent 12 }}
+            - name: CAPTURE_MODE
+              value: "recordings"
+            - name: ADDRESS
+              value: "0.0.0.0:3000"
+            {{- with .Values.features.sessionReplay.s3 }}
+            - name: SESSION_RECORDING_V2_S3_ENDPOINT
+              value: {{ .endpoint | quote }}
+            - name: SESSION_RECORDING_V2_S3_ACCESS_KEY_ID
+              value: {{ .accessKeyId | quote }}
+            - name: SESSION_RECORDING_V2_S3_SECRET_ACCESS_KEY
+              value: {{ .secretAccessKey | quote }}
+            - name: SESSION_RECORDING_V2_S3_BUCKET
+              value: {{ .bucket | quote }}
+            {{- end }}
+            {{- with .Values.replayCapture.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: 3000
+          {{- with (coalesce .Values.replayCapture.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+{{- $component := "ingestion-sessionreplay" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.ingestionSessionReplay.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      containers:
+        - name: {{ $component }}
+          image: "{{ .Values.image.node.repository }}:{{ .Values.image.node.tag }}"
+          imagePullPolicy: {{ .Values.image.node.pullPolicy }}
+          command: ["node", "nodejs/dist/index.js"]
+          env:
+            {{- include "posthog-minimal.node.env" . | nindent 12 }}
+            - name: PLUGIN_SERVER_MODE
+              value: "recordings-blob-ingestion-v2"
+            - name: HTTP_SERVER_PORT
+              value: "6739"
+            {{- with .Values.features.sessionReplay.s3 }}
+            - name: SESSION_RECORDING_V2_S3_ENDPOINT
+              value: {{ .endpoint | quote }}
+            - name: SESSION_RECORDING_V2_S3_ACCESS_KEY_ID
+              value: {{ .accessKeyId | quote }}
+            - name: SESSION_RECORDING_V2_S3_SECRET_ACCESS_KEY
+              value: {{ .secretAccessKey | quote }}
+            - name: SESSION_RECORDING_V2_S3_BUCKET
+              value: {{ .bucket | quote }}
+            {{- end }}
+            {{- with .Values.ingestionSessionReplay.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: 6739
+          {{- with (coalesce .Values.ingestionSessionReplay.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+{{- $component := "recording-api" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.recordingApi.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      containers:
+        - name: {{ $component }}
+          image: "{{ .Values.image.node.repository }}:{{ .Values.image.node.tag }}"
+          imagePullPolicy: {{ .Values.image.node.pullPolicy }}
+          command: ["node", "nodejs/dist/index.js"]
+          env:
+            {{- include "posthog-minimal.node.env" . | nindent 12 }}
+            - name: PLUGIN_SERVER_MODE
+              value: "recording-api"
+            - name: HTTP_SERVER_PORT
+              value: "6740"
+            {{- with .Values.recordingApi.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: 6740
+          {{- with (coalesce .Values.recordingApi.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" "recording-api" "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: recording-api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6740
+      targetPort: 6740
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "posthog-minimal.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: recording-api
+{{- end }}

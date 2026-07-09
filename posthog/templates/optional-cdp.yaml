@@ -1,0 +1,108 @@
+{{- if .Values.features.cdp.enabled }}
+{{- $component := "plugins" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.plugins.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      containers:
+        - name: {{ $component }}
+          image: "{{ .Values.image.node.repository }}:{{ .Values.image.node.tag }}"
+          imagePullPolicy: {{ .Values.image.node.pullPolicy }}
+          command: ["node", "nodejs/dist/index.js"]
+          env:
+            {{- include "posthog-minimal.node.env" . | nindent 12 }}
+            # PLUGIN_SERVER_MODE unset = default CDP mode
+            - name: HTTP_SERVER_PORT
+              value: "6738"
+            {{- if .Values.features.cdp.cyclotron.databaseUrl }}
+            - name: CYCLOTRON_DATABASE_URL
+              value: {{ .Values.features.cdp.cyclotron.databaseUrl | quote }}
+            {{- end }}
+            {{- if .Values.features.cdp.cyclotron.nodeDatabaseUrl }}
+            - name: CYCLOTRON_NODE_DATABASE_URL
+              value: {{ .Values.features.cdp.cyclotron.nodeDatabaseUrl | quote }}
+            {{- end }}
+            {{- if .Values.objectStorage.enabled }}
+            - name: OBJECT_STORAGE_ENABLED
+              value: "true"
+            - name: OBJECT_STORAGE_ENDPOINT
+              value: {{ .Values.objectStorage.endpoint | quote }}
+            - name: OBJECT_STORAGE_ACCESS_KEY_ID
+              value: {{ .Values.objectStorage.accessKeyId | quote }}
+            - name: OBJECT_STORAGE_SECRET_ACCESS_KEY
+              value: {{ .Values.objectStorage.secretAccessKey | quote }}
+            - name: OBJECT_STORAGE_BUCKET
+              value: {{ .Values.objectStorage.bucket | quote }}
+            {{- end }}
+            {{- with .Values.plugins.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: 6738
+          {{- with (coalesce .Values.plugins.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+{{- $component := "cyclotron-janitor" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.cyclotronJanitor.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      containers:
+        - name: {{ $component }}
+          image: "ghcr.io/posthog/posthog/cyclotron-janitor:{{ .Values.image.capture.tag }}"
+          imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
+          env:
+            - name: DATABASE_URL
+              {{- if .Values.features.cdp.cyclotron.databaseUrl }}
+              value: {{ .Values.features.cdp.cyclotron.databaseUrl | quote }}
+              {{- else }}
+              value: {{ .Values.postgres.url | quote }}
+              {{- end }}
+            - name: KAFKA_HOSTS
+              value: {{ .Values.kafka.hosts | quote }}
+            - name: BIND_PORT
+              value: "3303"
+            {{- with .Values.cyclotronJanitor.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: 3303
+          {{- with (coalesce .Values.cyclotronJanitor.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

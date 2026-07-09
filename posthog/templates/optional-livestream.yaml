@@ -1,0 +1,62 @@
+{{- if .Values.features.livestream.enabled }}
+{{- $component := "livestream" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.livestream.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      containers:
+        - name: {{ $component }}
+          image: "ghcr.io/posthog/posthog/livestream:{{ .Values.image.capture.tag }}"
+          imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
+          env:
+            - name: LIVESTREAM_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "posthog-minimal.fullname" . }}-secrets
+                  key: livestreamJwtSecret
+            - name: LIVESTREAM_CONSUMERS_EVENT_BROKERS
+              value: {{ .Values.kafka.hosts | quote }}
+            {{- with .Values.livestream.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: 8080
+          {{- with (coalesce .Values.livestream.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "posthog-minimal.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+{{- end }}

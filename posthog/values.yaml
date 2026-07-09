@@ -1,0 +1,532 @@
+# =============================================================================
+# posthog-minimal — values.yaml
+# =============================================================================
+# External dependencies are NOT provisioned by this chart.
+# Point every section below at your managed (or self-hosted) instances.
+# =============================================================================
+
+# -- PostHog image configuration
+image:
+  # Django (web/worker/temporal-django-worker) image
+  app:
+    repository: posthog/posthog
+    tag: latest
+    pullPolicy: IfNotPresent
+  # Node.js ingestion services (single image, mode set by PLUGIN_SERVER_MODE)
+  node:
+    repository: ghcr.io/posthog/posthog-node
+    tag: latest
+    pullPolicy: IfNotPresent
+  # Rust services (each is a separate binary image)
+  capture:
+    repository: ghcr.io/posthog/posthog/capture
+    tag: latest
+    pullPolicy: IfNotPresent
+  featureFlags:
+    repository: ghcr.io/posthog/posthog/feature-flags
+    tag: latest
+    pullPolicy: IfNotPresent
+  personhogReplica:
+    repository: ghcr.io/posthog/posthog/personhog-replica
+    tag: latest
+    pullPolicy: IfNotPresent
+  personhogRouter:
+    repository: ghcr.io/posthog/posthog/personhog-router
+    tag: latest
+    pullPolicy: IfNotPresent
+
+# -- Global image pull secrets
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# =============================================================================
+# External backing services
+# =============================================================================
+
+postgres:
+  # Main app database
+  url: "postgres://posthog:posthog@postgres:5432/posthog"
+  # Persons database (can be same instance, different DB name)
+  personsUrl: ""
+  # Behavioral cohorts database
+  behavioralCohortsUrl: ""
+  # Set to true if behind PgBouncer
+  usingPgbouncer: false
+  # Direct (non-pooled) host for migrations requiring lock_timeout
+  directHost: ""
+
+redis:
+  url: "redis://redis:6379"
+  # Optional dedicated URLs (uncomment to isolate hot paths)
+  # flagsUrl: ""
+  # CDP Redis (hog-transformer) — the node image defaults to 127.0.0.1,
+  # so set this to your Redis host for CDP/ingestion to work
+  cdpHost: ""
+  cdpPort: 6379
+  # Cookieless hashing Redis for feature-flags — image defaults to 127.0.0.1
+  cookielessHost: ""
+  cookielessPort: 6379
+
+clickhouse:
+  host: "clickhouse"
+  port: 9000
+  user: "default"
+  password: ""
+  database: "posthog"
+  cluster: "posthog"
+  secure: false
+  verify: false
+  # CA certificate for TLS (omit if not using TLS)
+  ca: ""
+  # For single standalone ClickHouse, set cluster to a
+  # 1-shard-1-replica name and ensure no ZooKeeper is configured.
+  # Replicated tables will NOT be used; MergeTree engines only.
+
+kafka:
+  hosts: "kafka:9092"
+  # Auth — leave empty for plaintext
+  securityProtocol: ""
+  saslMechanism: ""
+  saslUser: ""
+  saslPassword: ""
+
+objectStorage:
+  enabled: false
+  endpoint: ""
+  accessKeyId: ""
+  secretAccessKey: ""
+  region: ""
+  bucket: "posthog"
+  # Leave endpoint empty for AWS default + IAM role auth
+  # (omit accessKeyId / secretAccessKey too)
+  forcePathStyle: false
+
+# =============================================================================
+# Secrets — MUST be unique per installation, never use defaults in production
+# =============================================================================
+
+secrets:
+  # Django crypto signing
+  secretKey: "change-me-unique-secret-key"
+  # Fernet key(s) for encrypted model fields (32 bytes each)
+  encryptionSaltKeys: "00beef0000beef0000beef0000beef00"
+  # Django <-> Node.js internal auth
+  internalApiSecret: "change-me-internal-api-secret"
+  # JWT secret for capture-logs (required if capture-logs is enabled)
+  jwtSecret: ""
+
+# =============================================================================
+# Site / gateway
+# =============================================================================
+
+siteUrl: "http://localhost"
+deployment: ""  # set to "hobby" for simplified single-DB persons migration path
+
+# Gateway API configuration.
+# TLS is handled by the Gateway infrastructure (not this chart).
+# Create a Gateway separately and reference it via parentRefs.
+gateway:
+  httpRoute:
+    enabled: false
+    parentRef:
+      # Name of the Gateway resource to attach to (required)
+      name: ""
+      # Namespace of the Gateway (omit if same as the release)
+      namespace: ""
+      # Section name (listener) on the Gateway (omit to use all listeners)
+      sectionName: ""
+
+# =============================================================================
+# Feature gates — enable/disable optional components
+# =============================================================================
+# The "minimal" stack (all false) gives you:
+#   web, worker, capture, ingestion-general, feature-flags,
+#   personhog-replica, personhog-router
+# That is enough for product analytics event ingestion + UI.
+# Toggle features on as needed.
+# =============================================================================
+
+features:
+  # Session replay: replay-capture, ingestion-sessionreplay, recording-api
+  sessionReplay:
+    enabled: false
+    s3:
+      endpoint: ""
+      accessKeyId: ""
+      secretAccessKey: ""
+      bucket: ""
+
+  # Error tracking: ingestion-error-tracking, cymbal
+  errorTracking:
+    enabled: false
+
+  # Logs product: ingestion-logs
+  logs:
+    enabled: false
+
+  # Traces / LLM observability: ingestion-traces
+  traces:
+    enabled: false
+
+  # AI event capture endpoint: capture-ai
+  aiCapture:
+    enabled: false
+
+  # OTLP ingestion: capture-logs
+  captureLogs:
+    enabled: false
+
+  # Property/event definitions auto-detection
+  propertyDefs:
+    enabled: false
+
+  # CDP (destinations, transformations, cyclotron)
+  cdp:
+    enabled: false
+    cyclotron:
+      databaseUrl: ""
+      nodeDatabaseUrl: ""
+
+  # Temporal + temporal-django-worker
+  # Required for batch exports, warehouse, experiments,
+  # digests, alerts, etc.
+  temporal:
+    enabled: false
+    host: ""
+    port: 7233
+    namespace: "default"
+    secretKey: ""  # falls back to secrets.secretKey if empty
+
+  # Surveys / remote config edge endpoints
+  hypercache:
+    enabled: false
+
+  # Live event stream UI
+  livestream:
+    enabled: false
+    jwtSecret: ""
+
+  # Image exports + heatmap screenshots
+  browserless:
+    enabled: false
+    cdpUrl: ""
+    token: ""
+
+# =============================================================================
+# Component configurations
+# =============================================================================
+
+# -- Web (Django app server)
+web:
+  replicas: 1
+  resources: {}
+  #  requests:
+  #    cpu: 500m
+  #    memory: 512Mi
+  #  limits:
+  #    cpu: "1"
+  #    memory: 1Gi
+  extraEnv: {}
+  extraVolumes: []
+  extraVolumeMounts: []
+  service:
+    port: 8000
+  livenessProbe:
+    httpGet:
+      path: /_health
+      port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 15
+  readinessProbe:
+    httpGet:
+      path: /_ready
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  # -- Affinity for web pods. Overrides the global affinity when set.
+  affinity: {}
+
+# -- Worker (Celery)
+worker:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+  extraVolumes: []
+  extraVolumeMounts: []
+  # Celery concurrency
+  concurrency: ""
+  # -- Affinity for worker pods. Overrides the global affinity when set.
+  affinity: {}
+
+# -- Capture (Rust, event ingestion → Kafka)
+capture:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+  service:
+    port: 3000
+  livenessProbe:
+    httpGet:
+      path: /_liveness
+      port: 3000
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  readinessProbe:
+    httpGet:
+      path: /_readiness
+      port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  # -- Affinity for capture pods. Overrides the global affinity when set.
+  affinity: {}
+
+# -- Ingestion-general (Node.js, Kafka → ClickHouse)
+ingestionGeneral:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+  livenessProbe:
+    httpGet:
+      path: /_health
+      port: 6738
+    initialDelaySeconds: 15
+    periodSeconds: 15
+  readinessProbe:
+    httpGet:
+      path: /_ready
+      port: 6738
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  # -- Affinity for ingestion-general pods. Overrides global affinity.
+  affinity: {}
+
+# -- Feature flags (Rust)
+featureFlags:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+  service:
+    port: 3001
+  livenessProbe:
+    httpGet:
+      path: /_liveness
+      port: 3001
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  readinessProbe:
+    httpGet:
+      path: /_readiness
+      port: 3001
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  # -- Affinity for feature-flags pods. Overrides the global affinity when set.
+  affinity: {}
+
+# -- Personhog replica (Rust, gRPC)
+personhogReplica:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+  service:
+    grpcPort: 50051
+    metricsPort: 9100
+  livenessProbe:
+    httpGet:
+      path: /_liveness
+      port: 9100
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  readinessProbe:
+    httpGet:
+      path: /_readiness
+      port: 9100
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  # -- Affinity for personhog-replica pods. Overrides global affinity.
+  affinity: {}
+
+# -- Personhog router (Rust, gRPC proxy)
+personhogRouter:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+  service:
+    grpcPort: 50052
+    metricsPort: 9101
+  livenessProbe:
+    httpGet:
+      path: /_liveness
+      port: 9101
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  readinessProbe:
+    httpGet:
+      path: /_readiness
+      port: 9101
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  # -- Affinity for personhog-router pods. Overrides global affinity.
+  affinity: {}
+
+# -- Migration job
+migration:
+  # Set to true to re-run on every upgrade (default: runs once per install)
+  runOnUpgrade: false
+  resources: {}
+  extraEnv: {}
+  backoffLimit: 6
+
+# -- Kafka topic init job
+kafkaInit:
+  enabled: true
+  image:
+    repository: docker.io/redpandadata/redpanda
+    tag: v25.1.9
+    pullPolicy: IfNotPresent
+  resources: {}
+  backoffLimit: 6
+
+# -- ClickHouse bootstrap job (system.crash_log, Kafka named collections,
+#    infi_clickhouse_orm migration tracking tables). Idempotent — runs
+#    before the migrate job on every deploy. Enable for self-managed
+#    single-node ClickHouse.
+clickhouseInit:
+  enabled: false
+  image:
+    repository: clickhouse/clickhouse-server
+    tag: latest
+    pullPolicy: IfNotPresent
+  # Kafka named collections created in ClickHouse, all pointing at
+  # kafka.hosts (plaintext). Maps production cluster names to the
+  # local broker.
+  namedCollections:
+    - msk_cluster
+    - warpstream_ingestion
+    - warpstream_calculated_events
+    - warpstream_cyclotron
+    - warpstream_replay
+    - warpstream_shared
+    - warpstream_logs
+    - warpstream_cohort_membership_kafka_engine
+    - warpstream_ingestion_kafka_engines
+    - warpstream_ingestion_warnings_kafka_engine
+    - warpstream_kafka_engines
+    - warpstream_person_distinct_id_overrides_kafka_engine
+    - warpstream_replay_kafka_engines
+    - warpstream_shared_kafka_engines
+  resources: {}
+  backoffLimit: 6
+
+# =============================================================================
+# Optional component configs (only used when features.*.enabled = true)
+# =============================================================================
+
+replayCapture:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+ingestionSessionReplay:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+recordingApi:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+ingestionErrorTracking:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+cymbal:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+ingestionLogs:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+ingestionTraces:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+captureAi:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+captureLogs:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+propertyDefs:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+plugins:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+cyclotronJanitor:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+hypercache:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+livestream:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+temporalDjangoWorker:
+  replicas: 1
+  resources: {}
+  extraEnv: {}
+
+# =============================================================================
+# Logging
+# =============================================================================
+
+# -- Global log level for all PostHog components.
+# Valid values: error, warn, info, debug
+# Each runtime uses its own env var:
+#   Django  → DJANGO_LOG_LEVEL (warn becomes WARNING)
+#   Node.js → LOG_LEVEL
+#   Rust    → RUST_LOG
+logging:
+  level: warn
+
+# =============================================================================
+# Pod-level defaults
+# =============================================================================
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+nodeSelector: {}
+tolerations: []
+# -- Global affinity for all pods. Override with <component>.affinity.
+affinity: {}
+# -- Global resources for all containers. Override with <component>.resources.
+resources: {}
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+rbac:
+  # Create RBAC for k8s-awareness (personhog-router, etc.)
+  create: true

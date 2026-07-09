@@ -1,0 +1,135 @@
+{{- if .Values.gateway.httpRoute.enabled }}
+{{- $fullname := include "posthog-minimal.fullname" . }}
+{{- $ns := .Release.Namespace }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ .Values.gateway.httpRoute.parentRef.name | quote }}
+      {{- if .Values.gateway.httpRoute.parentRef.namespace }}
+      namespace: {{ .Values.gateway.httpRoute.parentRef.namespace | quote }}
+      {{- end }}
+      {{- if .Values.gateway.httpRoute.parentRef.sectionName }}
+      sectionName: {{ .Values.gateway.httpRoute.parentRef.sectionName | quote }}
+      {{- end }}
+  hostnames:
+    - {{ .Values.siteUrl | replace "https://" "" | replace "http://" "" | quote }}
+  rules:
+    # --- Capture: /i/v0/ai (must come before /i/v0 catch-all) ---
+    {{- if .Values.features.aiCapture.enabled }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /i/v0/ai
+      backendRefs:
+        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "capture-ai" "Chart" .Chart "Release" .Release "Values" .Values) }}
+          port: 3000
+    {{- end }}
+
+    # --- Capture-logs: /i/v1/logs|traces|metrics (before /i/v0) ---
+    {{- if .Values.features.captureLogs.enabled }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /i/v1/logs
+        - path:
+            type: PathPrefix
+            value: /i/v1/traces
+        - path:
+            type: PathPrefix
+            value: /i/v1/metrics
+      backendRefs:
+        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "capture-logs" "Chart" .Chart "Release" .Release "Values" .Values) }}
+          port: 4318
+    {{- end }}
+
+    # --- Capture: /e, /i/v0, /batch, /capture ---
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /e
+        - path:
+            type: PathPrefix
+            value: /i/v0
+        - path:
+            type: PathPrefix
+            value: /batch
+        - path:
+            type: PathPrefix
+            value: /capture
+      backendRefs:
+        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "capture" "Chart" .Chart "Release" .Release "Values" .Values) }}
+          port: {{ .Values.capture.service.port }}
+
+    # --- Replay-capture: /s ---
+    {{- if .Values.features.sessionReplay.enabled }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /s
+      backendRefs:
+        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "replay-capture" "Chart" .Chart "Release" .Release "Values" .Values) }}
+          port: 3000
+    {{- end }}
+
+    # --- Feature flags: /flags, /api/feature_flag/local_evaluation ---
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /flags
+        - path:
+            type: PathPrefix
+            value: /api/feature_flag/local_evaluation
+      backendRefs:
+        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "feature-flags" "Chart" .Chart "Release" .Release "Values" .Values) }}
+          port: {{ .Values.featureFlags.service.port }}
+
+    # --- Hypercache: /surveys ---
+    {{- if .Values.features.hypercache.enabled }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /surveys
+      backendRefs:
+        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "hypercache-server" "Chart" .Chart "Release" .Release "Values" .Values) }}
+          port: 3002
+    {{- end }}
+
+    # --- CDP webhooks: /public/webhooks, /public/m ---
+    {{- if .Values.features.cdp.enabled }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /public/webhooks
+        - path:
+            type: PathPrefix
+            value: /public/m
+      backendRefs:
+        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "plugins" "Chart" .Chart "Release" .Release "Values" .Values) }}
+          port: 6738
+    {{- end }}
+
+    # --- Livestream: /livestream ---
+    {{- if .Values.features.livestream.enabled }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /livestream
+      backendRefs:
+        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "livestream" "Chart" .Chart "Release" .Release "Values" .Values) }}
+          port: 8080
+    {{- end }}
+
+    # --- Web: catch-all (must be last) ---
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "web" "Chart" .Chart "Release" .Release "Values" .Values) }}
+          port: {{ .Values.web.service.port }}
+{{- end }}

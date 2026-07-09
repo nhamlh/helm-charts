@@ -1,0 +1,121 @@
+{{- if .Values.features.errorTracking.enabled }}
+{{- $component := "ingestion-error-tracking" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.ingestionErrorTracking.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      containers:
+        - name: {{ $component }}
+          image: "{{ .Values.image.node.repository }}:{{ .Values.image.node.tag }}"
+          imagePullPolicy: {{ .Values.image.node.pullPolicy }}
+          command: ["node", "nodejs/dist/index.js"]
+          env:
+            {{- include "posthog-minimal.node.env" . | nindent 12 }}
+            - name: PLUGIN_SERVER_MODE
+              value: "ingestion-errortracking"
+            - name: HTTP_SERVER_PORT
+              value: "6741"
+            - name: ERROR_TRACKING_CYMBAL_BASE_URL
+              value: "http://{{ include "posthog-minimal.component.fullname" (dict "component" "cymbal" "Chart" .Chart "Release" .Release "Values" .Values) }}:3302"
+            {{- with .Values.ingestionErrorTracking.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: 6741
+          {{- with (coalesce .Values.ingestionErrorTracking.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+{{- $component := "cymbal" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.cymbal.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      containers:
+        - name: {{ $component }}
+          image: "ghcr.io/posthog/posthog/cymbal:{{ .Values.image.capture.tag }}"
+          imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
+          env:
+            - name: KAFKA_HOSTS
+              value: {{ .Values.kafka.hosts | quote }}
+            - name: DATABASE_URL
+              value: {{ .Values.postgres.url | quote }}
+            - name: REDIS_URL
+              value: {{ .Values.redis.url | quote }}
+            - name: BIND_HOST
+              value: "0.0.0.0"
+            - name: BIND_PORT
+              value: "3302"
+            {{- if .Values.objectStorage.enabled }}
+            - name: OBJECT_STORAGE_BUCKET
+              value: {{ .Values.objectStorage.bucket | quote }}
+            - name: OBJECT_STORAGE_ACCESS_KEY_ID
+              value: {{ .Values.objectStorage.accessKeyId | quote }}
+            - name: OBJECT_STORAGE_SECRET_ACCESS_KEY
+              value: {{ .Values.objectStorage.secretAccessKey | quote }}
+            - name: OBJECT_STORAGE_ENDPOINT
+              value: {{ .Values.objectStorage.endpoint | quote }}
+            - name: OBJECT_STORAGE_FORCE_PATH_STYLE
+              value: "true"
+            {{- end }}
+            {{- with .Values.cymbal.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: 3302
+          {{- with (coalesce .Values.cymbal.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" "cymbal" "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cymbal
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3302
+      targetPort: 3302
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "posthog-minimal.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: cymbal
+{{- end }}

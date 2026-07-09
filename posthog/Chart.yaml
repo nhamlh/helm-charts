@@ -1,0 +1,19 @@
+apiVersion: v2
+name: posthog-minimal
+description: >-
+  Minimal PostHog Helm chart for self-hosted Kubernetes.
+  External deps (Postgres, Redis, ClickHouse, Kafka, S3)
+  are managed outside the chart.
+type: application
+version: 0.1.0
+appVersion: "latest"
+maintainers:
+  - name: posthog
+keywords:
+  - posthog
+  - analytics
+  - product-analytics
+  - event-ingestion
+home: https://posthog.com
+sources:
+  - https://github.com/PostHog/posthog

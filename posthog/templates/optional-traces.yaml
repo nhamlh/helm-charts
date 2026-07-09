@@ -1,0 +1,43 @@
+{{- if .Values.features.traces.enabled }}
+{{- $component := "ingestion-traces" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.ingestionTraces.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      containers:
+        - name: {{ $component }}
+          image: "{{ .Values.image.node.repository }}:{{ .Values.image.node.tag }}"
+          imagePullPolicy: {{ .Values.image.node.pullPolicy }}
+          command: ["node", "nodejs/dist/index.js"]
+          env:
+            {{- include "posthog-minimal.node.env" . | nindent 12 }}
+            - name: PLUGIN_SERVER_MODE
+              value: "ingestion-traces"
+            - name: HTTP_SERVER_PORT
+              value: "6743"
+            {{- with .Values.ingestionTraces.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: 6743
+          {{- with (coalesce .Values.ingestionTraces.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

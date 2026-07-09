@@ -1,0 +1,173 @@
+{{- if .Values.clickhouseInit.enabled }}
+{{- $component := "clickhouse-init" }}
+{{/*
+One-time ClickHouse bootstrap job — runs before migrations.
+
+Creates objects that are not part of the server config:
+  - system.crash_log  (older CH builds don't auto-create it)
+  - Kafka named collections pointing at kafka.hosts
+  - infi_clickhouse_orm migration tracking tables
+
+Idempotent (IF NOT EXISTS everywhere): safe to re-run on every deploy.
+
+Why SQL instead of config.d XML for named collections:
+  ClickHouse loads named collections from BOTH config.d XML and SQL
+  storage simultaneously. If a collection exists in both sources
+  (e.g. from a previous deploy) ClickHouse crashes with
+  NAMED_COLLECTION_ALREADY_EXISTS. Managing them exclusively via SQL
+  is the only conflict-free approach.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-6"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: {{ .Values.clickhouseInit.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: clickhouse-init
+          image: "{{ .Values.clickhouseInit.image.repository }}:{{ .Values.clickhouseInit.image.tag }}"
+          imagePullPolicy: {{ .Values.clickhouseInit.image.pullPolicy }}
+          env:
+            - name: CLICKHOUSE_HOST
+              value: {{ .Values.clickhouse.host | quote }}
+            - name: CLICKHOUSE_PORT
+              value: {{ .Values.clickhouse.port | quote }}
+            - name: CLICKHOUSE_USER
+              value: {{ .Values.clickhouse.user | quote }}
+            - name: CLICKHOUSE_PASSWORD
+              value: {{ .Values.clickhouse.password | quote }}
+            - name: KAFKA_BROKER
+              value: {{ .Values.kafka.hosts | quote }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              echo "Waiting for ClickHouse..."
+              until clickhouse-client \
+                --host "$CLICKHOUSE_HOST" \
+                --port "$CLICKHOUSE_PORT" \
+                --user "$CLICKHOUSE_USER" \
+                --password "$CLICKHOUSE_PASSWORD" \
+                --query "SELECT 1" > /dev/null 2>&1; do
+                echo "  not ready, retrying in 5s..."
+                sleep 5
+              done
+              echo "ClickHouse ready."
+
+              # ── system.crash_log ──────────────────────────────────
+              # Newer ClickHouse auto-creates this via crash_log.xml.
+              # Created manually here as a belt-and-suspenders guard.
+              echo "Ensuring system.crash_log..."
+              clickhouse-client \
+                --host "$CLICKHOUSE_HOST" \
+                --port "$CLICKHOUSE_PORT" \
+                --user "$CLICKHOUSE_USER" \
+                --password "$CLICKHOUSE_PASSWORD" \
+                --query "
+              CREATE TABLE IF NOT EXISTS system.crash_log (
+                event_date   Date     DEFAULT toDate(event_time),
+                event_time   DateTime DEFAULT now(),
+                timestamp_ns UInt64   DEFAULT 0,
+                signal       Int32    DEFAULT 0,
+                thread_id    UInt64   DEFAULT 0,
+                query_id     String   DEFAULT '',
+                trace        Array(UInt64) DEFAULT [],
+                trace_full   Array(String) DEFAULT [],
+                version      String   DEFAULT '',
+                revision     UInt32   DEFAULT 0,
+                argc         UInt64   DEFAULT 0,
+                argv         Array(String) DEFAULT []
+              ) ENGINE = MergeTree ORDER BY (event_date, event_time)
+              "
+              echo "system.crash_log OK."
+
+              # ── Named collections ─────────────────────────────────
+              # Production Kafka cluster names mapped to the local broker.
+              # Uses IF NOT EXISTS so this is safe when collections are
+              # already in use by Kafka tables (DROP would fail).
+              echo "Creating named collections..."
+              for name in \
+                {{- range .Values.clickhouseInit.namedCollections }}
+                {{ . }} \
+                {{- end }}
+                ; do
+                if clickhouse-client \
+                  --host "$CLICKHOUSE_HOST" \
+                  --port "$CLICKHOUSE_PORT" \
+                  --user "$CLICKHOUSE_USER" \
+                  --password "$CLICKHOUSE_PASSWORD" \
+                  --query "CREATE NAMED COLLECTION IF NOT EXISTS ${name} AS kafka_broker_list = '${KAFKA_BROKER}', kafka_security_protocol = 'PLAINTEXT'" 2>/dev/null; then
+                  echo "  ${name} OK."
+                else
+                  echo "  ${name} already exists (in use by tables, skipping)."
+                fi
+              done
+
+              # ── Migration tracking tables ──────────────────────
+              # Pre-create infi_clickhouse_orm tracking tables via
+              # native TCP (clickhouse-client) so that when
+              # migrate_clickhouse runs ON CLUSTER CREATE TABLE IF NOT
+              # EXISTS via HTTP, it is a no-op. This avoids a
+              # clickhouse-driver incompatibility with the ClickHouse
+              # 26.6 ON CLUSTER DDL result format (is_deleted column).
+              echo "Creating CH migration tracking tables..."
+              clickhouse-client \
+                --host "$CLICKHOUSE_HOST" \
+                --port "$CLICKHOUSE_PORT" \
+                --user "$CLICKHOUSE_USER" \
+                --password "$CLICKHOUSE_PASSWORD" \
+                --multiquery --query "
+              CREATE DATABASE IF NOT EXISTS {{ .Values.clickhouse.database }};
+              CREATE TABLE IF NOT EXISTS {{ .Values.clickhouse.database }}.infi_clickhouse_orm_migrations
+              ON CLUSTER '{{ .Values.clickhouse.cluster }}' (
+                package_name String,
+                module_name  String,
+                applied      Date DEFAULT '1970-01-01'
+              )
+              ENGINE = ReplicatedMergeTree(
+                '/clickhouse/prod/tables/noshard/{database}/{table}',
+                '{replica}-{shard}'
+              )
+              PARTITION BY toYYYYMM(applied)
+              ORDER BY (package_name, module_name)
+              SETTINGS index_granularity = 8192;
+              CREATE TABLE IF NOT EXISTS
+                {{ .Values.clickhouse.database }}.infi_clickhouse_orm_migrations_distributed
+              ON CLUSTER '{{ .Values.clickhouse.cluster }}' (
+                package_name String,
+                module_name  String,
+                applied      Date DEFAULT '1970-01-01'
+              )
+              ENGINE = Distributed(
+                '{{ .Values.clickhouse.cluster }}', '{{ .Values.clickhouse.database }}',
+                'infi_clickhouse_orm_migrations', rand()
+              );
+              "
+              echo "CH migration tracking tables OK."
+
+              echo "clickhouse-init complete."
+          {{- with (coalesce .Values.clickhouseInit.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

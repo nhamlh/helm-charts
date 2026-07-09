@@ -1,0 +1,68 @@
+{{- $component := "migrate" }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+  annotations:
+    # Keep the job after completion so we can inspect logs
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: {{ .Values.migration.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: "{{ .Values.image.app.repository }}:{{ .Values.image.app.tag }}"
+          imagePullPolicy: {{ .Values.image.app.pullPolicy }}
+          command: ["./bin/migrate", "--scope=postgres", "--scope=clickhouse"]
+          env:
+            {{- include "posthog-minimal.django.env" . | nindent 12 }}
+            - name: POSTHOG_SKIP_MIGRATION_CHECKS
+              value: "1"
+            {{- /* Single-cluster role mapping: every ClickHouse role cluster
+                   defaults to clickhouse.cluster. Do NOT set
+                   MULTINODE_CLICKHOUSE=1 — it enables role-based routing
+                   that requires dedicated LOGS/EVENTS nodes. Override any
+                   of these via migration.extraEnv for multi-node setups. */}}
+            - name: CLICKHOUSE_MIGRATIONS_CLUSTER
+              value: {{ .Values.clickhouse.cluster | quote }}
+            - name: CLICKHOUSE_SATELLITE_CLUSTERS
+              value: ""
+            {{- range list "PRIMARY_REPLICA" "SINGLE_SHARD" "WRITABLE" "AUX" "AI_EVENTS" "OPS" "LOGS" }}
+            - name: CLICKHOUSE_{{ . }}_CLUSTER
+              value: {{ $.Values.clickhouse.cluster | quote }}
+            {{- end }}
+            - name: CLICKHOUSE_LOGS_CLUSTER_HOST
+              value: {{ .Values.clickhouse.host | quote }}
+            - name: CLICKHOUSE_LOGS_CLUSTER_PORT
+              value: {{ .Values.clickhouse.port | quote }}
+            - name: CLICKHOUSE_LOGS_CLUSTER_USER
+              value: {{ .Values.clickhouse.user | quote }}
+            - name: CLICKHOUSE_LOGS_CLUSTER_PASSWORD
+              value: {{ .Values.clickhouse.password | quote }}
+            {{- with .Values.migration.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with (coalesce .Values.migration.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,50 @@
+{{- if .Values.features.temporal.enabled }}
+{{- $component := "temporal-django-worker" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.temporalDjangoWorker.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      containers:
+        - name: {{ $component }}
+          image: "{{ .Values.image.app.repository }}:{{ .Values.image.app.tag }}"
+          imagePullPolicy: {{ .Values.image.app.pullPolicy }}
+          command: ["bin/temporal-django-worker"]
+          env:
+            {{- include "posthog-minimal.django.env" . | nindent 12 }}
+            - name: TEMPORAL_HOST
+              value: {{ .Values.features.temporal.host | quote }}
+            - name: TEMPORAL_PORT
+              value: {{ .Values.features.temporal.port | quote }}
+            - name: TEMPORAL_NAMESPACE
+              value: {{ .Values.features.temporal.namespace | quote }}
+            {{- if .Values.features.temporal.secretKey }}
+            - name: TEMPORAL_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "posthog-minimal.fullname" . }}-secrets
+                  key: temporalSecretKey
+            {{- end }}
+            {{- with .Values.temporalDjangoWorker.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with (coalesce .Values.temporalDjangoWorker.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

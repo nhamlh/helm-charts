@@ -1,0 +1,123 @@
+{{- $component := "feature-flags" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  replicas: {{ .Values.featureFlags.replicas }}
+  selector:
+    matchLabels:
+      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ $component }}
+          image: "{{ .Values.image.featureFlags.repository }}:{{ .Values.image.featureFlags.tag }}"
+          imagePullPolicy: {{ .Values.image.featureFlags.pullPolicy }}
+          env:
+            - name: ADDRESS
+              value: "0.0.0.0:3001"
+            - name: WRITE_DATABASE_URL
+              value: {{ .Values.postgres.url | quote }}
+            - name: READ_DATABASE_URL
+              value: {{ .Values.postgres.url | quote }}
+            - name: REDIS_URL
+              value: {{ .Values.redis.url | quote }}
+            {{- if .Values.postgres.personsUrl }}
+            - name: PERSONS_DATABASE_URL
+              value: {{ .Values.postgres.personsUrl | quote }}
+            {{- end }}
+            - name: PERSONHOG_ADDR
+              value: "{{ include "posthog-minimal.component.fullname" (dict "component" "personhog-router" "Chart" .Chart "Release" .Release "Values" .Values) }}:50052"
+            - name: PERSONHOG_ENABLED
+              value: "true"
+            - name: RUST_LOG
+              value: {{ .Values.logging.level | quote }}
+            {{- /* Cookieless hashing Redis defaults to 127.0.0.1 in the image */}}
+            {{- if .Values.redis.cookielessHost }}
+            - name: COOKIELESS_REDIS_HOST
+              value: {{ .Values.redis.cookielessHost | quote }}
+            - name: COOKIELESS_REDIS_PORT
+              value: {{ .Values.redis.cookielessPort | default "6379" | quote }}
+            {{- end }}
+            {{- with .Values.featureFlags.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: 3001
+          {{- with .Values.featureFlags.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.featureFlags.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- $gr := .Values.resources }}
+          {{- with (coalesce .Values.featureFlags.resources $gr) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: geoip-db
+              mountPath: /share
+              readOnly: true
+      volumes:
+        - name: geoip-db
+          configMap:
+            name: geoip-db
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (coalesce .Values.featureFlags.affinity .Values.affinity) }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.featureFlags.service.port }}
+      targetPort: 3001
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "posthog-minimal.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
