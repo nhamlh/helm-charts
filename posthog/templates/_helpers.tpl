@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "posthog-minimal.name" -}}
+{{- define "posthog.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "posthog-minimal.fullname" -}}
+{{- define "posthog.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Chart label values.
 */}}
-{{- define "posthog-minimal.chart" -}}
+{{- define "posthog.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels applied to every resource.
 */}}
-{{- define "posthog-minimal.labels" -}}
-helm.sh/chart: {{ include "posthog-minimal.chart" . }}
-{{ include "posthog-minimal.selectorLabels" . }}
+{{- define "posthog.labels" -}}
+helm.sh/chart: {{ include "posthog.chart" . }}
+{{ include "posthog.selectorLabels" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
@@ -41,17 +41,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels — use these in matchLabels, not the full label set.
 */}}
-{{- define "posthog-minimal.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "posthog-minimal.name" . }}
+{{- define "posthog.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "posthog.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Service account name.
 */}}
-{{- define "posthog-minimal.serviceAccountName" -}}
+{{- define "posthog.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "posthog-minimal.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "posthog.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
@@ -60,22 +60,22 @@ Service account name.
 {{/*
 Component fullname — "release-chart-component".
 */}}
-{{- define "posthog-minimal.component.fullname" -}}
-{{- printf "%s-%s" (include "posthog-minimal.fullname" .) .component | trunc 63 | trimSuffix "-" }}
+{{- define "posthog.component.fullname" -}}
+{{- printf "%s-%s" (include "posthog.fullname" .) .component | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Convert the shared logging.level (warn/info/debug/error) to a Django log level.
 Django uses WARNING; all other levels uppercased are already canonical.
 */}}
-{{- define "posthog-minimal.django.logLevel" -}}
+{{- define "posthog.django.logLevel" -}}
 {{- if eq .Values.logging.level "warn" }}WARNING{{ else }}{{ .Values.logging.level | upper }}{{ end }}
 {{- end }}
 
 {{/*
 Django (web/worker) environment — shared base env vars.
 */}}
-{{- define "posthog-minimal.django.env" -}}
+{{- define "posthog.django.env" -}}
 - name: DATABASE_URL
   value: {{ .Values.postgres.url | quote }}
 - name: REDIS_URL
@@ -83,12 +83,12 @@ Django (web/worker) environment — shared base env vars.
 - name: SECRET_KEY
   valueFrom:
     secretKeyRef:
-      name: {{ include "posthog-minimal.fullname" . }}-secrets
+      name: {{ include "posthog.fullname" . }}-secrets
       key: secretKey
 - name: ENCRYPTION_SALT_KEYS
   valueFrom:
     secretKeyRef:
-      name: {{ include "posthog-minimal.fullname" . }}-secrets
+      name: {{ include "posthog.fullname" . }}-secrets
       key: encryptionSaltKeys
 - name: CLICKHOUSE_HOST
   value: {{ .Values.clickhouse.host | quote }}
@@ -125,16 +125,16 @@ Django (web/worker) environment — shared base env vars.
 - name: SITE_URL
   value: {{ .Values.siteUrl | quote }}
 - name: PERSONHOG_ADDR
-  value: "{{ include "posthog-minimal.component.fullname" (dict "component" "personhog-router" "Chart" .Chart "Release" .Release "Values" .Values) }}:50052"
+  value: "{{ include "posthog.component.fullname" (dict "component" "personhog-router" "Chart" .Chart "Release" .Release "Values" .Values) }}:50052"
 - name: PERSONHOG_ENABLED
   value: "true"
 - name: INTERNAL_API_SECRET
   valueFrom:
     secretKeyRef:
-      name: {{ include "posthog-minimal.fullname" . }}-secrets
+      name: {{ include "posthog.fullname" . }}-secrets
       key: internalApiSecret
 - name: DJANGO_LOG_LEVEL
-  value: {{ include "posthog-minimal.django.logLevel" . | quote }}
+  value: {{ include "posthog.django.logLevel" . | quote }}
 {{- if .Values.postgres.usingPgbouncer }}
 - name: USING_PGBOUNCER
   value: "true"
@@ -168,7 +168,7 @@ Django (web/worker) environment — shared base env vars.
 {{/*
 Node.js ingestion services — shared base env vars.
 */}}
-{{- define "posthog-minimal.node.env" -}}
+{{- define "posthog.node.env" -}}
 - name: DATABASE_URL
   value: {{ .Values.postgres.url | quote }}
 - name: REDIS_URL
@@ -203,16 +203,16 @@ Node.js ingestion services — shared base env vars.
 - name: ENCRYPTION_SALT_KEYS
   valueFrom:
     secretKeyRef:
-      name: {{ include "posthog-minimal.fullname" . }}-secrets
+      name: {{ include "posthog.fullname" . }}-secrets
       key: encryptionSaltKeys
 - name: PERSONHOG_ADDR
-  value: "{{ include "posthog-minimal.component.fullname" (dict "component" "personhog-router" "Chart" .Chart "Release" .Release "Values" .Values) }}:50052"
+  value: "{{ include "posthog.component.fullname" (dict "component" "personhog-router" "Chart" .Chart "Release" .Release "Values" .Values) }}:50052"
 - name: PERSONHOG_ENABLED
   value: "true"
 - name: INTERNAL_API_SECRET
   valueFrom:
     secretKeyRef:
-      name: {{ include "posthog-minimal.fullname" . }}-secrets
+      name: {{ include "posthog.fullname" . }}-secrets
       key: internalApiSecret
 - name: LOG_LEVEL
   value: {{ .Values.logging.level | quote }}
@@ -239,7 +239,7 @@ Node.js ingestion services — shared base env vars.
 {{/*
 Rust services — shared base env vars.
 */}}
-{{- define "posthog-minimal.rust.env" -}}
+{{- define "posthog.rust.env" -}}
 - name: KAFKA_HOSTS
   value: {{ .Values.kafka.hosts | quote }}
 - name: REDIS_URL

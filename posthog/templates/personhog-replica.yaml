@@ -2,27 +2,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  name: {{ include "posthog.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
   labels:
-    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    {{- include "posthog.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
 spec:
   replicas: {{ .Values.personhogReplica.replicas }}
   selector:
     matchLabels:
-      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      {{- include "posthog.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: {{ $component }}
   template:
     metadata:
       labels:
-        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        {{- include "posthog.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ $component }}
       {{- with .Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
-      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      serviceAccountName: {{ include "posthog.serviceAccountName" . }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -89,9 +89,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  name: {{ include "posthog.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
   labels:
-    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    {{- include "posthog.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
 spec:
   type: ClusterIP
@@ -105,5 +105,5 @@ spec:
       protocol: TCP
       name: metrics
   selector:
-    {{- include "posthog-minimal.selectorLabels" . | nindent 4 }}
+    {{- include "posthog.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}

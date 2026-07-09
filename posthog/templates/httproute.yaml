@@ -1,12 +1,12 @@
 {{- if .Values.gateway.httpRoute.enabled }}
-{{- $fullname := include "posthog-minimal.fullname" . }}
+{{- $fullname := include "posthog.fullname" . }}
 {{- $ns := .Release.Namespace }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: {{ $fullname }}
   labels:
-    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    {{- include "posthog.labels" . | nindent 4 }}
 spec:
   parentRefs:
     - name: {{ .Values.gateway.httpRoute.parentRef.name | quote }}
@@ -26,7 +26,7 @@ spec:
             type: PathPrefix
             value: /i/v0/ai
       backendRefs:
-        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "capture-ai" "Chart" .Chart "Release" .Release "Values" .Values) }}
+        - name: {{ include "posthog.component.fullname" (dict "component" "capture-ai" "Chart" .Chart "Release" .Release "Values" .Values) }}
           port: 3000
     {{- end }}
 
@@ -43,7 +43,7 @@ spec:
             type: PathPrefix
             value: /i/v1/metrics
       backendRefs:
-        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "capture-logs" "Chart" .Chart "Release" .Release "Values" .Values) }}
+        - name: {{ include "posthog.component.fullname" (dict "component" "capture-logs" "Chart" .Chart "Release" .Release "Values" .Values) }}
           port: 4318
     {{- end }}
 
@@ -62,7 +62,7 @@ spec:
             type: PathPrefix
             value: /capture
       backendRefs:
-        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "capture" "Chart" .Chart "Release" .Release "Values" .Values) }}
+        - name: {{ include "posthog.component.fullname" (dict "component" "capture" "Chart" .Chart "Release" .Release "Values" .Values) }}
           port: {{ .Values.capture.service.port }}
 
     # --- Replay-capture: /s ---
@@ -72,7 +72,7 @@ spec:
             type: PathPrefix
             value: /s
       backendRefs:
-        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "replay-capture" "Chart" .Chart "Release" .Release "Values" .Values) }}
+        - name: {{ include "posthog.component.fullname" (dict "component" "replay-capture" "Chart" .Chart "Release" .Release "Values" .Values) }}
           port: 3000
     {{- end }}
 
@@ -85,7 +85,7 @@ spec:
             type: PathPrefix
             value: /api/feature_flag/local_evaluation
       backendRefs:
-        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "feature-flags" "Chart" .Chart "Release" .Release "Values" .Values) }}
+        - name: {{ include "posthog.component.fullname" (dict "component" "feature-flags" "Chart" .Chart "Release" .Release "Values" .Values) }}
           port: {{ .Values.featureFlags.service.port }}
 
     # --- Hypercache: /surveys ---
@@ -95,7 +95,7 @@ spec:
             type: PathPrefix
             value: /surveys
       backendRefs:
-        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "hypercache-server" "Chart" .Chart "Release" .Release "Values" .Values) }}
+        - name: {{ include "posthog.component.fullname" (dict "component" "hypercache-server" "Chart" .Chart "Release" .Release "Values" .Values) }}
           port: 3002
     {{- end }}
 
@@ -109,7 +109,7 @@ spec:
             type: PathPrefix
             value: /public/m
       backendRefs:
-        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "plugins" "Chart" .Chart "Release" .Release "Values" .Values) }}
+        - name: {{ include "posthog.component.fullname" (dict "component" "plugins" "Chart" .Chart "Release" .Release "Values" .Values) }}
           port: 6738
     {{- end }}
 
@@ -120,7 +120,7 @@ spec:
             type: PathPrefix
             value: /livestream
       backendRefs:
-        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "livestream" "Chart" .Chart "Release" .Release "Values" .Values) }}
+        - name: {{ include "posthog.component.fullname" (dict "component" "livestream" "Chart" .Chart "Release" .Release "Values" .Values) }}
           port: 8080
     {{- end }}
 
@@ -130,6 +130,6 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: {{ include "posthog-minimal.component.fullname" (dict "component" "web" "Chart" .Chart "Release" .Release "Values" .Values) }}
+        - name: {{ include "posthog.component.fullname" (dict "component" "web" "Chart" .Chart "Release" .Release "Values" .Values) }}
           port: {{ .Values.web.service.port }}
 {{- end }}

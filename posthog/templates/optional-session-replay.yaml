@@ -3,29 +3,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  name: {{ include "posthog.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
   labels:
-    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    {{- include "posthog.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
 spec:
   replicas: {{ .Values.replayCapture.replicas }}
   selector:
     matchLabels:
-      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      {{- include "posthog.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: {{ $component }}
   template:
     metadata:
       labels:
-        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        {{- include "posthog.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ $component }}
     spec:
-      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      serviceAccountName: {{ include "posthog.serviceAccountName" . }}
       containers:
         - name: {{ $component }}
           image: "{{ .Values.image.capture.repository }}:{{ .Values.image.capture.tag }}"
           imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
           env:
-            {{- include "posthog-minimal.rust.env" . | nindent 12 }}
+            {{- include "posthog.rust.env" . | nindent 12 }}
             - name: CAPTURE_MODE
               value: "recordings"
             - name: ADDRESS
@@ -54,30 +54,30 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  name: {{ include "posthog.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
   labels:
-    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    {{- include "posthog.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
 spec:
   replicas: {{ .Values.ingestionSessionReplay.replicas }}
   selector:
     matchLabels:
-      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      {{- include "posthog.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: {{ $component }}
   template:
     metadata:
       labels:
-        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        {{- include "posthog.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ $component }}
     spec:
-      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      serviceAccountName: {{ include "posthog.serviceAccountName" . }}
       containers:
         - name: {{ $component }}
           image: "{{ .Values.image.node.repository }}:{{ .Values.image.node.tag }}"
           imagePullPolicy: {{ .Values.image.node.pullPolicy }}
           command: ["node", "nodejs/dist/index.js"]
           env:
-            {{- include "posthog-minimal.node.env" . | nindent 12 }}
+            {{- include "posthog.node.env" . | nindent 12 }}
             - name: PLUGIN_SERVER_MODE
               value: "recordings-blob-ingestion-v2"
             - name: HTTP_SERVER_PORT
@@ -106,30 +106,30 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  name: {{ include "posthog.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
   labels:
-    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    {{- include "posthog.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
 spec:
   replicas: {{ .Values.recordingApi.replicas }}
   selector:
     matchLabels:
-      {{- include "posthog-minimal.selectorLabels" . | nindent 6 }}
+      {{- include "posthog.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: {{ $component }}
   template:
     metadata:
       labels:
-        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        {{- include "posthog.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ $component }}
     spec:
-      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      serviceAccountName: {{ include "posthog.serviceAccountName" . }}
       containers:
         - name: {{ $component }}
           image: "{{ .Values.image.node.repository }}:{{ .Values.image.node.tag }}"
           imagePullPolicy: {{ .Values.image.node.pullPolicy }}
           command: ["node", "nodejs/dist/index.js"]
           env:
-            {{- include "posthog-minimal.node.env" . | nindent 12 }}
+            {{- include "posthog.node.env" . | nindent 12 }}
             - name: PLUGIN_SERVER_MODE
               value: "recording-api"
             - name: HTTP_SERVER_PORT
@@ -147,9 +147,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "posthog-minimal.component.fullname" (dict "component" "recording-api" "Chart" .Chart "Release" .Release "Values" .Values) }}
+  name: {{ include "posthog.component.fullname" (dict "component" "recording-api" "Chart" .Chart "Release" .Release "Values" .Values) }}
   labels:
-    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    {{- include "posthog.labels" . | nindent 4 }}
     app.kubernetes.io/component: recording-api
 spec:
   type: ClusterIP
@@ -159,6 +159,6 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "posthog-minimal.selectorLabels" . | nindent 4 }}
+    {{- include "posthog.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: recording-api
 {{- end }}

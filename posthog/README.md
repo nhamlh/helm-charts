@@ -1,4 +1,4 @@
-# posthog-minimal
+# posthog
 
 A minimal Helm chart for self-hosting PostHog on Kubernetes.
 
@@ -100,7 +100,7 @@ objectStorage:
 EOF
 
 # 2. Install the chart
-helm install posthog ./charts/posthog-minimal -f my-values.yaml -n posthog --create-namespace
+helm install posthog ./posthog -f my-values.yaml -n posthog --create-namespace
 
 # 3. Open SITE_URL in a browser and complete /signup to create the first admin user
 ```
@@ -133,7 +133,7 @@ features:
 Then upgrade:
 
 ```bash
-helm upgrade posthog ./charts/posthog-minimal -f my-values.yaml -n posthog
+helm upgrade posthog ./posthog -f my-values.yaml -n posthog
 ```
 
 ## Gateway / HTTPRoute

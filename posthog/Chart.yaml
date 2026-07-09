@@ -1,5 +1,5 @@
 apiVersion: v2
-name: posthog-minimal
+name: posthog
 description: >-
   Minimal PostHog Helm chart for self-hosted Kubernetes.
   External deps (Postgres, Redis, ClickHouse, Kafka, S3)

@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "posthog-minimal.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  name: {{ include "posthog.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
   labels:
-    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    {{- include "posthog.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
   annotations:
     # Keep the job after completion so we can inspect logs
@@ -16,11 +16,11 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "posthog-minimal.selectorLabels" . | nindent 8 }}
+        {{- include "posthog.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ $component }}
     spec:
       restartPolicy: Never
-      serviceAccountName: {{ include "posthog-minimal.serviceAccountName" . }}
+      serviceAccountName: {{ include "posthog.serviceAccountName" . }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -31,7 +31,7 @@ spec:
           imagePullPolicy: {{ .Values.image.app.pullPolicy }}
           command: ["./bin/migrate", "--scope=postgres", "--scope=clickhouse"]
           env:
-            {{- include "posthog-minimal.django.env" . | nindent 12 }}
+            {{- include "posthog.django.env" . | nindent 12 }}
             - name: POSTHOG_SKIP_MIGRATION_CHECKS
               value: "1"
             {{- /* Single-cluster role mapping: every ClickHouse role cluster

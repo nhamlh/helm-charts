@@ -2,9 +2,9 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ include "posthog-minimal.fullname" . }}
+  name: {{ include "posthog.fullname" . }}
   labels:
-    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    {{- include "posthog.labels" . | nindent 4 }}
 rules:
   # k8s-awareness: personhog-router and other Rust services
   # need to watch pods/replicasets/deployments to distinguish
@@ -23,15 +23,15 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "posthog-minimal.fullname" . }}
+  name: {{ include "posthog.fullname" . }}
   labels:
-    {{- include "posthog-minimal.labels" . | nindent 4 }}
+    {{- include "posthog.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ include "posthog-minimal.fullname" . }}
+  name: {{ include "posthog.fullname" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "posthog-minimal.serviceAccountName" . }}
+    name: {{ include "posthog.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 {{- end }}

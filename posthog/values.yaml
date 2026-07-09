@@ -1,5 +1,5 @@
 # =============================================================================
-# posthog-minimal — values.yaml
+# posthog — values.yaml
 # =============================================================================
 # External dependencies are NOT provisioned by this chart.
 # Point every section below at your managed (or self-hosted) instances.
