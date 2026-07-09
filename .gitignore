@@ -1,0 +1,5 @@
+# Local act secrets — never commit real tokens
+.github/act.secrets
+
+# Helm chart packages
+*.tgz

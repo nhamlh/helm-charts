@@ -1,0 +1,20 @@
+{
+  "ref": "refs/heads/main",
+  "before": "5af0584f24cf57a2e84f76e35f2590c7d9e5ab88",
+  "after": "01ec1d91d068601a9c7158238f6a54c3fa515f13",
+  "repository": {
+    "name": "charts",
+    "full_name": "Tevi-Space/charts",
+    "default_branch": "main"
+  },
+  "pusher": {
+    "name": "Tevi CI"
+  },
+  "commits": [
+    {
+      "id": "51eb6fb29ad1dca3afdb982b19b1543f0d3597c6",
+      "message": "feat: bump app chart to 1.2.6",
+      "modified": ["app/Chart.yaml"]
+    }
+  ]
+}
