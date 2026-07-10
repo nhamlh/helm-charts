@@ -83,10 +83,21 @@ spec:
             - name: geoip-db
               mountPath: /share
               readOnly: true
+      initContainers:
+        - name: download-geoip-db
+          image: alpine:3
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              apk add --no-cache curl brotli && \
+              curl -fsSL https://mmdbcdn.posthog.net/ --http1.1 | \
+              brotli --decompress --output=/share/GeoLite2-City.mmdb
+          volumeMounts:
+            - name: geoip-db
+              mountPath: /share
       volumes:
         - name: geoip-db
-          configMap:
-            name: geoip-db
+          emptyDir: {}
       {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
