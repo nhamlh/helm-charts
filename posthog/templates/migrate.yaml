@@ -1,4 +1,16 @@
 {{- $component := "migrate" }}
+{{- $image := printf "%s:%s" .Values.image.app.repository .Values.image.app.tag }}
+{{- /* Helm hooks run on every upgrade, so guard rendering instead: look up the
+       live web Deployment and skip the job when it already runs the target
+       image. lookup returns nil on install and dry-run, so the job always
+       renders there. Set migration.alwaysRun=true to force a run. */}}
+{{- $webName := include "posthog.component.fullname" (dict "component" "web" "Chart" .Chart "Release" .Release "Values" .Values) }}
+{{- $liveWeb := lookup "apps/v1" "Deployment" .Release.Namespace $webName }}
+{{- $liveImage := "" }}
+{{- if $liveWeb }}
+{{- $liveImage = (first $liveWeb.spec.template.spec.containers).image }}
+{{- end }}
+{{- if or .Values.migration.alwaysRun (ne $liveImage $image) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -66,3 +78,4 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- end }}
