@@ -89,9 +89,10 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              apk add --no-cache curl brotli && \
-              curl -fsSL https://mmdbcdn.posthog.net/ --http1.1 | \
-              brotli --decompress --output=/share/GeoLite2-City.mmdb
+              apk add --no-cache curl brotli &&
+              curl -fsSL https://mmdbcdn.posthog.net/ --http1.1 |
+              brotli --decompress --output=/share/GeoLite2-City.mmdb &&
+              chmod 644 /share/GeoLite2-City.mmdb
           volumeMounts:
             - name: geoip-db
               mountPath: /share
