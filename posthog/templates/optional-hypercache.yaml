@@ -22,8 +22,8 @@ spec:
       serviceAccountName: {{ include "posthog.serviceAccountName" . }}
       containers:
         - name: {{ $component }}
-          image: "ghcr.io/posthog/posthog/hypercache-server:{{ .Values.image.capture.tag }}"
-          imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
+          image: "{{ .Values.image.hypercacheServer.repository }}:{{ .Values.image.hypercacheServer.tag }}"
+          imagePullPolicy: {{ .Values.image.hypercacheServer.pullPolicy }}
           env:
             - name: ADDRESS
               value: "0.0.0.0:3002"

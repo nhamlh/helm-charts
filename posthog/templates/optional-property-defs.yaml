@@ -22,8 +22,8 @@ spec:
       serviceAccountName: {{ include "posthog.serviceAccountName" . }}
       containers:
         - name: {{ $component }}
-          image: "ghcr.io/posthog/posthog/property-defs-rs:{{ .Values.image.capture.tag }}"
-          imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
+          image: "{{ .Values.image.propertyDefsRs.repository }}:{{ .Values.image.propertyDefsRs.tag }}"
+          imagePullPolicy: {{ .Values.image.propertyDefsRs.pullPolicy }}
           env:
             - name: DATABASE_URL
               value: {{ .Values.postgres.url | quote }}

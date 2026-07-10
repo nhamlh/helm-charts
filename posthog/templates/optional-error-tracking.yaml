@@ -66,8 +66,8 @@ spec:
       serviceAccountName: {{ include "posthog.serviceAccountName" . }}
       containers:
         - name: {{ $component }}
-          image: "ghcr.io/posthog/posthog/cymbal:{{ .Values.image.capture.tag }}"
-          imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
+          image: "{{ .Values.image.cymbal.repository }}:{{ .Values.image.cymbal.tag }}"
+          imagePullPolicy: {{ .Values.image.cymbal.pullPolicy }}
           env:
             - name: KAFKA_HOSTS
               value: {{ .Values.kafka.hosts | quote }}

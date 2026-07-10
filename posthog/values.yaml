@@ -20,19 +20,39 @@ image:
   # Rust services (each is a separate binary image)
   capture:
     repository: ghcr.io/posthog/posthog/capture
-    tag: latest
+    tag: master
     pullPolicy: IfNotPresent
   featureFlags:
     repository: ghcr.io/posthog/posthog/feature-flags
-    tag: latest
+    tag: master
     pullPolicy: IfNotPresent
   personhogReplica:
     repository: ghcr.io/posthog/posthog/personhog-replica
-    tag: latest
+    tag: master
     pullPolicy: IfNotPresent
   personhogRouter:
     repository: ghcr.io/posthog/posthog/personhog-router
+    tag: master
+    pullPolicy: IfNotPresent
+  cymbal:
+    repository: ghcr.io/posthog/posthog/cymbal
+    tag: master
+    pullPolicy: IfNotPresent
+  cyclotronJanitor:
+    repository: ghcr.io/posthog/posthog/cyclotron-janitor
+    tag: master
+    pullPolicy: IfNotPresent
+  hypercacheServer:
+    repository: ghcr.io/posthog/posthog/hypercache-server
+    tag: master
+    pullPolicy: IfNotPresent
+  livestream:
+    repository: ghcr.io/posthog/posthog/livestream
     tag: latest
+    pullPolicy: IfNotPresent
+  propertyDefsRs:
+    repository: ghcr.io/posthog/posthog/property-defs-rs
+    tag: master
     pullPolicy: IfNotPresent
 
 # -- Global image pull secrets

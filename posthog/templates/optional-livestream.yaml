@@ -22,8 +22,8 @@ spec:
       serviceAccountName: {{ include "posthog.serviceAccountName" . }}
       containers:
         - name: {{ $component }}
-          image: "ghcr.io/posthog/posthog/livestream:{{ .Values.image.capture.tag }}"
-          imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
+          image: "{{ .Values.image.livestream.repository }}:{{ .Values.image.livestream.tag }}"
+          imagePullPolicy: {{ .Values.image.livestream.pullPolicy }}
           env:
             - name: LIVESTREAM_JWT_SECRET
               valueFrom:

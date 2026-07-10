@@ -83,8 +83,8 @@ spec:
       serviceAccountName: {{ include "posthog.serviceAccountName" . }}
       containers:
         - name: {{ $component }}
-          image: "ghcr.io/posthog/posthog/cyclotron-janitor:{{ .Values.image.capture.tag }}"
-          imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
+          image: "{{ .Values.image.cyclotronJanitor.repository }}:{{ .Values.image.cyclotronJanitor.tag }}"
+          imagePullPolicy: {{ .Values.image.cyclotronJanitor.pullPolicy }}
           env:
             - name: DATABASE_URL
               {{- if .Values.features.cdp.cyclotron.databaseUrl }}
