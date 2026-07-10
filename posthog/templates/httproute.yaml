@@ -100,7 +100,6 @@ spec:
     {{- end }}
 
     # --- CDP webhooks: /public/webhooks, /public/m ---
-    {{- if .Values.features.cdp.enabled }}
     - matches:
         - path:
             type: PathPrefix
@@ -111,7 +110,6 @@ spec:
       backendRefs:
         - name: {{ include "posthog.component.fullname" (dict "component" "plugins" "Chart" .Chart "Release" .Release "Values" .Values) }}
           port: 6738
-    {{- end }}
 
     # --- Livestream: /livestream ---
     {{- if .Values.features.livestream.enabled }}

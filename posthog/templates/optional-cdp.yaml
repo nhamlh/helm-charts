@@ -1,4 +1,3 @@
-{{- if .Values.features.cdp.enabled }}
 {{- $component := "plugins" }}
 apiVersion: apps/v1
 kind: Deployment
@@ -105,4 +104,3 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-{{- end }}

@@ -207,7 +207,8 @@ features:
 
   # CDP (destinations, transformations, cyclotron)
   cdp:
-    enabled: false
+    # DEPRECATED: CDP is required and always enabled; this field has no effect.
+    enabled: true
     cyclotron:
       databaseUrl: ""
       nodeDatabaseUrl: ""

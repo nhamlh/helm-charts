@@ -1,4 +1,3 @@
-{{- if .Values.features.cdp.enabled }}
 {{- $component := "cyclotron-migrate" }}
 apiVersion: batch/v1
 kind: Job
@@ -33,9 +32,9 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
-              migrate-entry cyclotron
+              /migrations/bin/migrate-entry cyclotron
               {{- if .Values.features.cdp.cyclotron.nodeDatabaseUrl }}
-              migrate-entry cyclotron-node
+              /migrations/bin/migrate-entry cyclotron-node
               {{- end }}
           env:
             # migrate-entry cyclotron reads CYCLOTRON_DATABASE_URL; fall back to
@@ -53,4 +52,3 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-{{- end }}
