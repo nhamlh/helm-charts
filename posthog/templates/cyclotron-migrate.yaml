@@ -1,0 +1,56 @@
+{{- if .Values.features.cdp.enabled }}
+{{- $component := "cyclotron-migrate" }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "posthog.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+  annotations:
+    # Keep the job after completion so we can inspect logs
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: {{ .Values.cyclotronMigration.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "posthog.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ $component }}
+          image: "{{ .Values.image.sqlxMigrate.repository }}:{{ .Values.image.sqlxMigrate.tag }}"
+          imagePullPolicy: {{ .Values.image.sqlxMigrate.pullPolicy }}
+          command: ["sh", "-c"]
+          args:
+            - |
+              migrate-entry cyclotron
+              {{- if .Values.features.cdp.cyclotron.nodeDatabaseUrl }}
+              migrate-entry cyclotron-node
+              {{- end }}
+          env:
+            # migrate-entry cyclotron reads CYCLOTRON_DATABASE_URL; fall back to
+            # the main postgres URL so this matches the janitor's own fallback.
+            - name: CYCLOTRON_DATABASE_URL
+              value: {{ coalesce .Values.features.cdp.cyclotron.databaseUrl .Values.postgres.url | quote }}
+            {{- if .Values.features.cdp.cyclotron.nodeDatabaseUrl }}
+            - name: CYCLOTRON_NODE_DATABASE_URL
+              value: {{ .Values.features.cdp.cyclotron.nodeDatabaseUrl | quote }}
+            {{- end }}
+            {{- with .Values.cyclotronMigration.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with (coalesce .Values.cyclotronMigration.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

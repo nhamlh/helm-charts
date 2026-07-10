@@ -42,6 +42,10 @@ image:
     repository: ghcr.io/posthog/posthog/cyclotron-janitor
     tag: master
     pullPolicy: IfNotPresent
+  sqlxMigrate:
+    repository: ghcr.io/posthog/posthog/sqlx-migrate
+    tag: master
+    pullPolicy: IfNotPresent
   hypercacheServer:
     repository: ghcr.io/posthog/posthog/hypercache-server
     tag: master
@@ -391,6 +395,11 @@ personhogRouter:
 
 # -- Migration job
 migration:
+  resources: {}
+  extraEnv: {}
+  backoffLimit: 6
+
+cyclotronMigration:
   resources: {}
   extraEnv: {}
   backoffLimit: 6
