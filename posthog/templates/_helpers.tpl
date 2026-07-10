@@ -58,6 +58,21 @@ Service account name.
 {{- end }}
 
 {{/*
+Service account name used by pre-install/pre-upgrade hook Jobs
+(migrate/init). This is a separate, ephemeral ServiceAccount so the
+workload ServiceAccount can be a normal Helm-managed resource with a
+stable UID (recreating it on every upgrade invalidates the bound
+tokens of long-running pods such as personhog-router).
+*/}}
+{{- define "posthog.hookServiceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- printf "%s-hooks" (include "posthog.serviceAccountName" .) }}
+{{- else }}
+{{- include "posthog.serviceAccountName" . }}
+{{- end }}
+{{- end }}
+
+{{/*
 Component fullname — "release-chart-component".
 */}}
 {{- define "posthog.component.fullname" -}}

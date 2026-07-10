@@ -20,7 +20,7 @@ spec:
         app.kubernetes.io/component: {{ $pgComponent }}
     spec:
       restartPolicy: Never
-      serviceAccountName: {{ include "posthog.serviceAccountName" . }}
+      serviceAccountName: {{ include "posthog.hookServiceAccountName" . }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -68,7 +68,7 @@ spec:
         app.kubernetes.io/component: {{ $chComponent }}
     spec:
       restartPolicy: Never
-      serviceAccountName: {{ include "posthog.serviceAccountName" . }}
+      serviceAccountName: {{ include "posthog.hookServiceAccountName" . }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
