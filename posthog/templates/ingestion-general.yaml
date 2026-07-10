@@ -38,6 +38,8 @@ spec:
               value: "ingestion-v2-combined"
             - name: HTTP_SERVER_PORT
               value: "6738"
+            - name: MMDB_FILE_LOCATION
+              value: /share/GeoLite2-City.mmdb
             {{- with .Values.ingestionGeneral.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -60,6 +62,14 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          volumeMounts:
+            - name: geoip-db
+              mountPath: /share
+              readOnly: true
+      volumes:
+        - name: geoip-db
+          configMap:
+            name: geoip-db
       {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
