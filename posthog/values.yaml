@@ -371,9 +371,6 @@ personhogRouter:
 
 # -- Migration job
 migration:
-  # -- Force the migrate job to run even when the app image is unchanged.
-  # By default it only runs on install or when image.app changes.
-  alwaysRun: false
   resources: {}
   extraEnv: {}
   backoffLimit: 6
