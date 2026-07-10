@@ -1,11 +1,59 @@
-{{- $component := "migrate" }}
+{{- $pgComponent := "migrate-postgres" }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "posthog.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  name: {{ include "posthog.component.fullname" (dict "component" $pgComponent "Chart" .Chart "Release" .Release "Values" .Values) }}
   labels:
     {{- include "posthog.labels" . | nindent 4 }}
-    app.kubernetes.io/component: {{ $component }}
+    app.kubernetes.io/component: {{ $pgComponent }}
+  annotations:
+    # Keep the job after completion so we can inspect logs
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-6"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: {{ .Values.migration.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "posthog.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $pgComponent }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "posthog.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate-postgres
+          image: "{{ .Values.image.app.repository }}:{{ .Values.image.app.tag }}"
+          imagePullPolicy: {{ .Values.image.app.pullPolicy }}
+          command: ["./bin/migrate", "--scope=postgres"]
+          env:
+            {{- include "posthog.django.env" . | nindent 12 }}
+            - name: POSTHOG_SKIP_MIGRATION_CHECKS
+              value: "1"
+            {{- with .Values.migration.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with (coalesce .Values.migration.resources .Values.resources) }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+{{- $chComponent := "migrate-clickhouse" }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "posthog.component.fullname" (dict "component" $chComponent "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $chComponent }}
   annotations:
     # Keep the job after completion so we can inspect logs
     "helm.sh/hook": pre-install,pre-upgrade
@@ -17,7 +65,7 @@ spec:
     metadata:
       labels:
         {{- include "posthog.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: {{ $component }}
+        app.kubernetes.io/component: {{ $chComponent }}
     spec:
       restartPolicy: Never
       serviceAccountName: {{ include "posthog.serviceAccountName" . }}
@@ -26,10 +74,10 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
-        - name: migrate
+        - name: migrate-clickhouse
           image: "{{ .Values.image.app.repository }}:{{ .Values.image.app.tag }}"
           imagePullPolicy: {{ .Values.image.app.pullPolicy }}
-          command: ["./bin/migrate", "--scope=postgres", "--scope=clickhouse"]
+          command: ["./bin/migrate", "--scope=clickhouse"]
           env:
             {{- include "posthog.django.env" . | nindent 12 }}
             - name: POSTHOG_SKIP_MIGRATION_CHECKS
