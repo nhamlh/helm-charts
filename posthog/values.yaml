@@ -454,76 +454,91 @@ replayCapture:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 ingestionSessionReplay:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 recordingApi:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 ingestionErrorTracking:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 cymbal:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 ingestionLogs:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 ingestionTraces:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 captureAi:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 captureLogs:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 propertyDefs:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 plugins:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 cyclotronJanitor:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 hypercache:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 livestream:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 temporalDjangoWorker:
   replicas: 1
   resources: {}
   extraEnv: {}
+  affinity: {}
 
 # =============================================================================
 # Logging

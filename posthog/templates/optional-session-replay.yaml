@@ -49,6 +49,10 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+      {{- with (coalesce .Values.replayCapture.affinity .Values.affinity) }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 ---
 {{- $component := "ingestion-sessionreplay" }}
 apiVersion: apps/v1
@@ -101,6 +105,10 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+      {{- with (coalesce .Values.ingestionSessionReplay.affinity .Values.affinity) }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 ---
 {{- $component := "recording-api" }}
 apiVersion: apps/v1
@@ -143,6 +151,10 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+      {{- with (coalesce .Values.recordingApi.affinity .Values.affinity) }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service
