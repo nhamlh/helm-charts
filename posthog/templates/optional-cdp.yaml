@@ -63,6 +63,24 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "posthog.component.fullname" (dict "component" $component "Chart" .Chart "Release" .Release "Values" .Values) }}
+  labels:
+    {{- include "posthog.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "posthog.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+  ports:
+    - name: http
+      port: 6738
+      targetPort: 6738
+      protocol: TCP
+---
 {{- $component := "cyclotron-janitor" }}
 apiVersion: apps/v1
 kind: Deployment

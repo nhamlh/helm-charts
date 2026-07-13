@@ -143,6 +143,8 @@ Django (web/worker) environment — shared base env vars.
   value: "{{ include "posthog.component.fullname" (dict "component" "personhog-router" "Chart" .Chart "Release" .Release "Values" .Values) }}:50052"
 - name: PERSONHOG_ENABLED
   value: "true"
+- name: CDP_API_URL
+  value: "http://{{ include "posthog.component.fullname" (dict "component" "plugins" "Chart" .Chart "Release" .Release "Values" .Values) }}:6738"
 - name: INTERNAL_API_SECRET
   valueFrom:
     secretKeyRef:
@@ -158,6 +160,8 @@ Django (web/worker) environment — shared base env vars.
 - name: POSTHOG_POSTGRES_DIRECT_HOST
   value: {{ .Values.postgres.directHost | quote }}
 {{- end }}
+- name: OPT_OUT_CAPTURE
+  value: "1"
 {{- if .Values.deployment }}
 - name: DEPLOYMENT
   value: {{ .Values.deployment | quote }}
