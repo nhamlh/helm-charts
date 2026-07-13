@@ -403,11 +403,13 @@ personhogRouter:
 
 # -- Migration job
 migration:
+  enabled: false
   resources: {}
   extraEnv: {}
   backoffLimit: 6
 
 cyclotronMigration:
+  enabled: false
   resources: {}
   extraEnv: {}
   backoffLimit: 6

@@ -1,3 +1,4 @@
+{{- if .Values.cyclotronMigration.enabled }}
 {{- $component := "cyclotron-migrate" }}
 apiVersion: batch/v1
 kind: Job
@@ -52,3 +53,4 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+{{- end }}
