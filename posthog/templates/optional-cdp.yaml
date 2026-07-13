@@ -7,7 +7,9 @@ metadata:
     {{- include "posthog.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
 spec:
+  {{- if not (coalesce .Values.plugins.autoscaling .Values.autoscaling).enabled }}
   replicas: {{ .Values.plugins.replicas }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "posthog.selectorLabels" . | nindent 6 }}
@@ -90,7 +92,9 @@ metadata:
     {{- include "posthog.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
 spec:
+  {{- if not (coalesce .Values.cyclotronJanitor.autoscaling .Values.autoscaling).enabled }}
   replicas: {{ .Values.cyclotronJanitor.replicas }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "posthog.selectorLabels" . | nindent 6 }}

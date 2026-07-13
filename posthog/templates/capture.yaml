@@ -7,7 +7,9 @@ metadata:
     {{- include "posthog.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
 spec:
+  {{- if not (coalesce .Values.capture.autoscaling .Values.autoscaling).enabled }}
   replicas: {{ .Values.capture.replicas }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "posthog.selectorLabels" . | nindent 6 }}

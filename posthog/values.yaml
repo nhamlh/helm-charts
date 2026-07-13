@@ -245,6 +245,7 @@ features:
 # -- Web (Django app server)
 web:
   replicas: 1
+  autoscaling: {}
   resources: {}
   #  requests:
   #    cpu: 500m
@@ -275,6 +276,7 @@ web:
 # -- Worker (Celery)
 worker:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   extraVolumes: []
@@ -287,6 +289,7 @@ worker:
 # -- Capture (Rust, event ingestion → Kafka)
 capture:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   service:
@@ -309,6 +312,7 @@ capture:
 # -- Ingestion-general (Node.js, Kafka → ClickHouse)
 ingestionGeneral:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   livenessProbe:
@@ -329,6 +333,7 @@ ingestionGeneral:
 # -- Feature flags (Rust)
 featureFlags:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   service:
@@ -351,6 +356,7 @@ featureFlags:
 # -- Personhog replica (Rust, gRPC)
 personhogReplica:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   service:
@@ -374,6 +380,7 @@ personhogReplica:
 # -- Personhog router (Rust, gRPC proxy)
 personhogRouter:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   service:
@@ -452,90 +459,105 @@ clickhouseInit:
 
 replayCapture:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 ingestionSessionReplay:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 recordingApi:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 ingestionErrorTracking:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 cymbal:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 ingestionLogs:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 ingestionTraces:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 captureAi:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 captureLogs:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 propertyDefs:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 plugins:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 cyclotronJanitor:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 hypercache:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 livestream:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
 
 temporalDjangoWorker:
   replicas: 1
+  autoscaling: {}
   resources: {}
   extraEnv: {}
   affinity: {}
@@ -566,6 +588,19 @@ tolerations: []
 affinity: {}
 # -- Global resources for all containers. Override with <component>.resources.
 resources: {}
+# -- Global KEDA ScaledObject config. Override with <component>.autoscaling.
+# When enabled, matching Deployments omit spec.replicas so KEDA/HPA owns scaling.
+autoscaling:
+  enabled: false
+  # minReplicaCount: 1
+  # maxReplicaCount: 5
+  triggers: []
+  # Example trigger:
+  # triggers:
+  #   - type: cpu
+  #     metricType: Utilization
+  #     metadata:
+  #       value: "70"
 serviceAccount:
   create: true
   annotations: {}

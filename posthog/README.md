@@ -136,6 +136,39 @@ Then upgrade:
 helm upgrade posthog ./posthog -f my-values.yaml -n posthog
 ```
 
+## KEDA autoscaling
+
+The chart can render KEDA `ScaledObject` resources for any component. Install
+KEDA CRDs in the cluster first, then enable top-level `autoscaling` as a global
+default. Each component can set its own `autoscaling` block to override the
+global default, matching the `resources` and `affinity` override pattern. When
+enabled, the target Deployment omits `spec.replicas` so KEDA/HPA owns scaling.
+
+```yaml
+autoscaling:
+  enabled: true
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  triggers:
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "70"
+
+web:
+  autoscaling:
+    enabled: true
+    minReplicaCount: 2
+    maxReplicaCount: 10
+    triggers:
+      - type: cpu
+        metricType: Utilization
+        metadata:
+          value: "60"
+```
+
+See `values.yaml` for the supported component keys and optional KEDA fields.
+
 ## Gateway / HTTPRoute
 
 The chart uses the **Gateway API** (`HTTPRoute`) instead of `Ingress`.
