@@ -103,24 +103,28 @@ spec:
 
               # ── Named collections ─────────────────────────────────
               # Production Kafka cluster names mapped to the local broker.
-              # Uses IF NOT EXISTS so this is safe when collections are
-              # already in use by Kafka tables (DROP would fail).
-              echo "Creating named collections..."
+              # Upsert so existing collections follow kafka.hosts changes.
+              # DROP cannot be used because Kafka tables hold references to
+              # these collections while running.
+              echo "Upserting named collections..."
               for name in \
                 {{- range .Values.clickhouseInit.namedCollections }}
                 {{ . }} \
                 {{- end }}
                 ; do
-                if clickhouse-client \
+                clickhouse-client \
                   --host "$CLICKHOUSE_HOST" \
                   --port "$CLICKHOUSE_PORT" \
                   --user "$CLICKHOUSE_USER" \
                   --password "$CLICKHOUSE_PASSWORD" \
-                  --query "CREATE NAMED COLLECTION IF NOT EXISTS ${name} AS kafka_broker_list = '${KAFKA_BROKER}', kafka_security_protocol = 'PLAINTEXT'" 2>/dev/null; then
-                  echo "  ${name} OK."
-                else
-                  echo "  ${name} already exists (in use by tables, skipping)."
-                fi
+                  --query "ALTER NAMED COLLECTION IF EXISTS ${name} SET kafka_broker_list = '${KAFKA_BROKER}', kafka_security_protocol = 'PLAINTEXT'"
+                clickhouse-client \
+                  --host "$CLICKHOUSE_HOST" \
+                  --port "$CLICKHOUSE_PORT" \
+                  --user "$CLICKHOUSE_USER" \
+                  --password "$CLICKHOUSE_PASSWORD" \
+                  --query "CREATE NAMED COLLECTION IF NOT EXISTS ${name} AS kafka_broker_list = '${KAFKA_BROKER}', kafka_security_protocol = 'PLAINTEXT'"
+                echo "  ${name} OK."
               done
 
               # ── Migration tracking tables ──────────────────────
