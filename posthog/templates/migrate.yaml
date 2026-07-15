@@ -32,7 +32,7 @@ spec:
           imagePullPolicy: {{ .Values.image.app.pullPolicy }}
           command: ["./bin/migrate", "--scope=postgres"]
           env:
-            {{- include "posthog.django.env" . | nindent 12 }}
+            {{- include "posthog.django.env" (dict "root" . "inlineSecrets" true) | nindent 12 }}
             - name: POSTHOG_SKIP_MIGRATION_CHECKS
               value: "1"
             {{- with .Values.migration.extraEnv }}
@@ -80,7 +80,7 @@ spec:
           imagePullPolicy: {{ .Values.image.app.pullPolicy }}
           command: ["./bin/migrate", "--scope=clickhouse"]
           env:
-            {{- include "posthog.django.env" . | nindent 12 }}
+            {{- include "posthog.django.env" (dict "root" . "inlineSecrets" true) | nindent 12 }}
             - name: POSTHOG_SKIP_MIGRATION_CHECKS
               value: "1"
             {{- /* Single-cluster role mapping: every ClickHouse role cluster

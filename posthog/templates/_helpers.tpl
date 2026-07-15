@@ -88,98 +88,125 @@ Django uses WARNING; all other levels uppercased are already canonical.
 {{- end }}
 
 {{/*
+Django secret environment variables.
+
+Runtime workloads read these values from the stable Secret. Helm hook Jobs run
+before normal resources in ArgoCD, so they can request inline values to avoid a
+startup dependency on a Secret that does not exist yet.
+*/}}
+{{- define "posthog.django.secretEnv" -}}
+{{- $root := .root -}}
+{{- $inline := default false .inline -}}
+- name: SECRET_KEY
+{{- if $inline }}
+  value: {{ $root.Values.secrets.secretKey | quote }}
+{{- else }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "posthog.fullname" $root }}-secrets
+      key: secretKey
+{{- end }}
+- name: ENCRYPTION_SALT_KEYS
+{{- if $inline }}
+  value: {{ $root.Values.secrets.encryptionSaltKeys | quote }}
+{{- else }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "posthog.fullname" $root }}-secrets
+      key: encryptionSaltKeys
+{{- end }}
+- name: INTERNAL_API_SECRET
+{{- if $inline }}
+  value: {{ $root.Values.secrets.internalApiSecret | quote }}
+{{- else }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "posthog.fullname" $root }}-secrets
+      key: internalApiSecret
+{{- end }}
+{{- end }}
+
+{{/*
 Django (web/worker) environment — shared base env vars.
 */}}
 {{- define "posthog.django.env" -}}
+{{- $root := .root -}}
+{{- $inlineSecrets := default false .inlineSecrets -}}
 - name: DATABASE_URL
-  value: {{ .Values.postgres.url | quote }}
+  value: {{ $root.Values.postgres.url | quote }}
 - name: REDIS_URL
-  value: {{ .Values.redis.url | quote }}
-- name: SECRET_KEY
-  valueFrom:
-    secretKeyRef:
-      name: {{ include "posthog.fullname" . }}-secrets
-      key: secretKey
-- name: ENCRYPTION_SALT_KEYS
-  valueFrom:
-    secretKeyRef:
-      name: {{ include "posthog.fullname" . }}-secrets
-      key: encryptionSaltKeys
+  value: {{ $root.Values.redis.url | quote }}
+{{ include "posthog.django.secretEnv" (dict "root" $root "inline" $inlineSecrets) }}
 - name: CLICKHOUSE_HOST
-  value: {{ .Values.clickhouse.host | quote }}
+  value: {{ $root.Values.clickhouse.host | quote }}
 - name: CLICKHOUSE_DATABASE
-  value: {{ .Values.clickhouse.database | quote }}
+  value: {{ $root.Values.clickhouse.database | quote }}
 - name: CLICKHOUSE_USER
-  value: {{ .Values.clickhouse.user | quote }}
+  value: {{ $root.Values.clickhouse.user | quote }}
 - name: CLICKHOUSE_PASSWORD
-  value: {{ .Values.clickhouse.password | quote }}
+  value: {{ $root.Values.clickhouse.password | quote }}
 - name: CLICKHOUSE_CLUSTER
-  value: {{ .Values.clickhouse.cluster | quote }}
+  value: {{ $root.Values.clickhouse.cluster | quote }}
 - name: CLICKHOUSE_SECURE
-  value: {{ .Values.clickhouse.secure | quote }}
+  value: {{ $root.Values.clickhouse.secure | quote }}
 - name: CLICKHOUSE_VERIFY
-  value: {{ .Values.clickhouse.verify | quote }}
-{{- if .Values.clickhouse.ca }}
+  value: {{ $root.Values.clickhouse.verify | quote }}
+{{- if $root.Values.clickhouse.ca }}
 - name: CLICKHOUSE_CA
-  value: {{ .Values.clickhouse.ca | quote }}
+  value: {{ $root.Values.clickhouse.ca | quote }}
 {{- end }}
 - name: KAFKA_HOSTS
-  value: {{ .Values.kafka.hosts | quote }}
-{{- if .Values.kafka.securityProtocol }}
+  value: {{ $root.Values.kafka.hosts | quote }}
+{{- if $root.Values.kafka.securityProtocol }}
 - name: KAFKA_SECURITY_PROTOCOL
-  value: {{ .Values.kafka.securityProtocol | quote }}
+  value: {{ $root.Values.kafka.securityProtocol | quote }}
 {{- end }}
-{{- if .Values.kafka.saslMechanism }}
+{{- if $root.Values.kafka.saslMechanism }}
 - name: KAFKA_SASL_MECHANISM
-  value: {{ .Values.kafka.saslMechanism | quote }}
+  value: {{ $root.Values.kafka.saslMechanism | quote }}
 - name: KAFKA_SASL_USER
-  value: {{ .Values.kafka.saslUser | quote }}
+  value: {{ $root.Values.kafka.saslUser | quote }}
 - name: KAFKA_SASL_PASSWORD
-  value: {{ .Values.kafka.saslPassword | quote }}
+  value: {{ $root.Values.kafka.saslPassword | quote }}
 {{- end }}
 - name: SITE_URL
-  value: {{ .Values.siteUrl | quote }}
+  value: {{ $root.Values.siteUrl | quote }}
 - name: PERSONHOG_ADDR
-  value: "{{ include "posthog.component.fullname" (dict "component" "personhog-router" "Chart" .Chart "Release" .Release "Values" .Values) }}:50052"
+  value: "{{ include "posthog.component.fullname" (dict "component" "personhog-router" "Chart" $root.Chart "Release" $root.Release "Values" $root.Values) }}:50052"
 - name: PERSONHOG_ENABLED
   value: "true"
 - name: CDP_API_URL
-  value: "http://{{ include "posthog.component.fullname" (dict "component" "plugins" "Chart" .Chart "Release" .Release "Values" .Values) }}:6738"
-- name: INTERNAL_API_SECRET
-  valueFrom:
-    secretKeyRef:
-      name: {{ include "posthog.fullname" . }}-secrets
-      key: internalApiSecret
+  value: "http://{{ include "posthog.component.fullname" (dict "component" "plugins" "Chart" $root.Chart "Release" $root.Release "Values" $root.Values) }}:6738"
 - name: DJANGO_LOG_LEVEL
-  value: {{ include "posthog.django.logLevel" . | quote }}
-{{- if .Values.postgres.usingPgbouncer }}
+  value: {{ include "posthog.django.logLevel" $root | quote }}
+{{- if $root.Values.postgres.usingPgbouncer }}
 - name: USING_PGBOUNCER
   value: "true"
 {{- end }}
-{{- if .Values.postgres.directHost }}
+{{- if $root.Values.postgres.directHost }}
 - name: POSTHOG_POSTGRES_DIRECT_HOST
-  value: {{ .Values.postgres.directHost | quote }}
+  value: {{ $root.Values.postgres.directHost | quote }}
 {{- end }}
 - name: OPT_OUT_CAPTURE
   value: "1"
-{{- if .Values.deployment }}
+{{- if $root.Values.deployment }}
 - name: DEPLOYMENT
-  value: {{ .Values.deployment | quote }}
+  value: {{ $root.Values.deployment | quote }}
 {{- end }}
-{{- if .Values.objectStorage.enabled }}
+{{- if $root.Values.objectStorage.enabled }}
 - name: OBJECT_STORAGE_ENABLED
   value: "true"
 - name: OBJECT_STORAGE_ENDPOINT
-  value: {{ .Values.objectStorage.endpoint | quote }}
+  value: {{ $root.Values.objectStorage.endpoint | quote }}
 - name: OBJECT_STORAGE_ACCESS_KEY_ID
-  value: {{ .Values.objectStorage.accessKeyId | quote }}
+  value: {{ $root.Values.objectStorage.accessKeyId | quote }}
 - name: OBJECT_STORAGE_SECRET_ACCESS_KEY
-  value: {{ .Values.objectStorage.secretAccessKey | quote }}
+  value: {{ $root.Values.objectStorage.secretAccessKey | quote }}
 - name: OBJECT_STORAGE_BUCKET
-  value: {{ .Values.objectStorage.bucket | quote }}
-{{- if .Values.objectStorage.region }}
+  value: {{ $root.Values.objectStorage.bucket | quote }}
+{{- if $root.Values.objectStorage.region }}
 - name: OBJECT_STORAGE_REGION
-  value: {{ .Values.objectStorage.region | quote }}
+  value: {{ $root.Values.objectStorage.region | quote }}
 {{- end }}
 {{- end }}
 {{- end }}

@@ -5,7 +5,7 @@ description: >-
   External deps (Postgres, Redis, ClickHouse, Kafka, S3)
   are managed outside the chart.
 type: application
-version: 0.1.16
+version: 0.1.17
 appVersion: "latest"
 maintainers:
   - name: posthog
