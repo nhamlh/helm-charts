@@ -96,7 +96,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with (coalesce .Values.ingestionGeneral.affinity .Values.affinity) }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+      {{- include "posthog.affinity" (dict "root" . "valuesKey" "ingestionGeneral" "component" "ingestion-general") | nindent 6 }}

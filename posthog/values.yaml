@@ -587,6 +587,17 @@ securityContext: {}
 nodeSelector: {}
 tolerations: []
 # -- Global affinity for all pods. Override with <component>.affinity.
+# Each Deployment also gets a per-component soft podAntiAffinity by default
+# (preferredDuringSchedulingIgnoredDuringExecution on kubernetes.io/hostname)
+# when this field and the component-level affinity are both empty.
+# Example — require strict spreading across nodes for all components:
+# affinity:
+#   podAntiAffinity:
+#     requiredDuringSchedulingIgnoredDuringExecution:
+#       - labelSelector:
+#           matchLabels:
+#             app.kubernetes.io/name: posthog
+#         topologyKey: kubernetes.io/hostname
 affinity: {}
 # -- Global resources for all containers. Override with <component>.resources.
 resources: {}

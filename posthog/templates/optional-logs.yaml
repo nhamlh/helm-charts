@@ -42,8 +42,5 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- with (coalesce .Values.ingestionLogs.affinity .Values.affinity) }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+      {{- include "posthog.affinity" (dict "root" . "valuesKey" "ingestionLogs" "component" "ingestion-logs") | nindent 6 }}
 {{- end }}

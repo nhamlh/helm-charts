@@ -44,10 +44,7 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- with (coalesce .Values.ingestionErrorTracking.affinity .Values.affinity) }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+      {{- include "posthog.affinity" (dict "root" . "valuesKey" "ingestionErrorTracking" "component" "ingestion-error-tracking") | nindent 6 }}
 ---
 {{- $component := "cymbal" }}
 apiVersion: apps/v1
@@ -108,10 +105,7 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- with (coalesce .Values.cymbal.affinity .Values.affinity) }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+      {{- include "posthog.affinity" (dict "root" . "valuesKey" "cymbal" "component" "cymbal") | nindent 6 }}
 ---
 apiVersion: v1
 kind: Service

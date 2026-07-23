@@ -74,7 +74,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with (coalesce .Values.worker.affinity .Values.affinity) }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+      {{- include "posthog.affinity" (dict "root" . "valuesKey" "worker" "component" "worker") | nindent 6 }}

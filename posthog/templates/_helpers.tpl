@@ -80,6 +80,38 @@ Component fullname — "release-chart-component".
 {{- end }}
 
 {{/*
+Component affinity block.
+
+Emits a soft podAntiAffinity rule (preferredDuringSchedulingIgnoredDuringExecution
+on kubernetes.io/hostname) so pods are spread across nodes by default.
+If the component-level or global affinity is explicitly set (non-empty map),
+that value is used verbatim instead.
+
+Usage:
+  {{- include "posthog.affinity" (dict "root" . "valuesKey" "featureFlags" "component" "feature-flags") | nindent 6 }}
+*/}}
+{{- define "posthog.affinity" -}}
+{{- $root     := .root -}}
+{{- $compVals := index $root.Values .valuesKey -}}
+{{- $explicit := coalesce $compVals.affinity $root.Values.affinity -}}
+{{- if $explicit }}
+affinity:
+  {{- toYaml $explicit | nindent 2 }}
+{{- else }}
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              {{- include "posthog.selectorLabels" $root | nindent 14 }}
+              app.kubernetes.io/component: {{ .component }}
+          topologyKey: kubernetes.io/hostname
+{{- end }}
+{{- end }}
+
+{{/*
 Convert the shared logging.level (warn/info/debug/error) to a Django log level.
 Django uses WARNING; all other levels uppercased are already canonical.
 */}}
