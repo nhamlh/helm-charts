@@ -82,23 +82,50 @@ Component fullname — "release-chart-component".
 {{/*
 Component affinity block.
 
-Emits a soft podAntiAffinity rule (preferredDuringSchedulingIgnoredDuringExecution
-on kubernetes.io/hostname) so pods are spread across nodes by default.
-If the component-level or global affinity is explicitly set (non-empty map),
-that value is used verbatim instead.
+Builds the affinity block from two independent concerns:
+
+  1. nodeAffinity  — taken from .Values.affinity.nodeAffinity (optional).
+  2. podAntiAffinity — controlled by the top-level .Values.podAntiAffinity
+     string value:
+       "required"  → requiredDuringSchedulingIgnoredDuringExecution (hard)
+       "preferred" → preferredDuringSchedulingIgnoredDuringExecution, weight 100 (soft, default)
+       anything else → omitted
+     The rule always matches on app.kubernetes.io/component so pods of
+     DIFFERENT components may share a node; only same-component replicas
+     are spread apart.
+
+Escape hatch: if the component-level affinity key is set, it is emitted
+verbatim and the logic above is skipped entirely.
 
 Usage:
   {{- include "posthog.affinity" (dict "root" . "valuesKey" "featureFlags" "component" "feature-flags") | nindent 6 }}
 */}}
 {{- define "posthog.affinity" -}}
-{{- $root     := .root -}}
-{{- $compVals := index $root.Values .valuesKey -}}
-{{- $explicit := coalesce $compVals.affinity $root.Values.affinity -}}
-{{- if $explicit }}
+{{- $root      := .root -}}
+{{- $compVals  := index $root.Values .valuesKey -}}
+{{- $component := .component -}}
+{{- if $compVals.affinity }}
 affinity:
-  {{- toYaml $explicit | nindent 2 }}
+  {{- toYaml $compVals.affinity | nindent 2 }}
 {{- else }}
+{{- $nodeAffinity := ($root.Values.affinity).nodeAffinity }}
+{{- $mode := coalesce $root.Values.podAntiAffinity "preferred" }}
+{{- $hasPodAntiAffinity := or (eq $mode "required") (eq $mode "preferred") }}
+{{- if or $nodeAffinity $hasPodAntiAffinity }}
 affinity:
+  {{- if $nodeAffinity }}
+  nodeAffinity:
+    {{- toYaml $nodeAffinity | nindent 4 }}
+  {{- end }}
+  {{- if eq $mode "required" }}
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            {{- include "posthog.selectorLabels" $root | nindent 12 }}
+            app.kubernetes.io/component: {{ $component }}
+        topologyKey: kubernetes.io/hostname
+  {{- else if eq $mode "preferred" }}
   podAntiAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:
       - weight: 100
@@ -106,8 +133,10 @@ affinity:
           labelSelector:
             matchLabels:
               {{- include "posthog.selectorLabels" $root | nindent 14 }}
-              app.kubernetes.io/component: {{ .component }}
+              app.kubernetes.io/component: {{ $component }}
           topologyKey: kubernetes.io/hostname
+  {{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 
