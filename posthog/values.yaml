@@ -425,6 +425,15 @@ personhogRouter:
 # -- Migration job
 migration:
   enabled: false
+  # Also run the persons SQL migrations (rust/persons_migrations) in the
+  # migrate-postgres job, with the Django runner in single-DB "hobby" mode:
+  # persons tables live in the main (or postgres.personsUrl) database and the
+  # partitioning migrations are skipped. Needed when the sqlx persons job is
+  # not used; without it ingestion fails on missing columns (for example
+  # posthog_persondistinctid.is_deleted). Do not enable if persons are
+  # partitioned and migrated by sqlx.
+  persons:
+    enabled: false
   resources: {}
   extraEnv: {}
   backoffLimit: 6

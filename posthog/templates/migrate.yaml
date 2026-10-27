@@ -30,11 +30,24 @@ spec:
         - name: migrate-postgres
           image: "{{ .Values.image.app.repository }}:{{ .Values.image.app.tag }}"
           imagePullPolicy: {{ .Values.image.app.pullPolicy }}
+          {{- if .Values.migration.persons.enabled }}
+          command: ["./bin/migrate", "--scope=postgres", "--scope=persons"]
+          {{- else }}
           command: ["./bin/migrate", "--scope=postgres"]
+          {{- end }}
           env:
             {{- include "posthog.django.env" (dict "root" . "inlineSecrets" true) | nindent 12 }}
             - name: POSTHOG_SKIP_MIGRATION_CHECKS
               value: "1"
+            {{- if .Values.migration.persons.enabled }}
+            {{- /* bin/migrate runs apply_persons_migrations --hobby only when DEPLOYMENT=hobby. */}}
+            {{- if ne (toString .Values.deployment) "hobby" }}
+            - name: DEPLOYMENT
+              value: hobby
+            {{- end }}
+            - name: PERSONS_DB_WRITER_URL
+              value: {{ coalesce .Values.postgres.personsUrl .Values.postgres.url | quote }}
+            {{- end }}
             {{- with .Values.migration.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
