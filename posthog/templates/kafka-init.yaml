@@ -60,7 +60,20 @@ spec:
                 clickhouse_person_distinct_id \
                 clickhouse_app_metrics2 \
                 log_entries \
-                clickhouse_tophog"
+                clickhouse_tophog \
+                {{- if .Values.features.errorTracking.enabled }}
+                clickhouse_error_tracking_fingerprint_issue_state \
+                clickhouse_error_tracking_issue_fingerprint \
+                error_tracking_ingestion_notifications \
+                {{- end }}
+                {{- if or .Values.features.logs.enabled .Values.features.captureLogs.enabled }}
+                logs_ingestion \
+                metrics_ingestion \
+                clickhouse_logs \
+                clickhouse_metrics \
+                plugin_log_entries \
+                {{- end }}
+                "
               for topic in $TOPICS; do
                 if rpk topic create "$topic" --brokers {{ .Values.kafka.hosts }} -p 1 -r 1 2>&1; then
                   echo "Topic $topic created successfully"

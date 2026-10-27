@@ -35,8 +35,8 @@ A minimal Helm chart for self-hosting PostHog on Kubernetes.
 | Feature flag | Components added |
 |---|---|
 | `features.sessionReplay.enabled` | `replay-capture`, `ingestion-sessionreplay`, `recording-api` |
-| `features.errorTracking.enabled` | `ingestion-error-tracking`, `cymbal` |
-| `features.logs.enabled` | `ingestion-logs` |
+| `features.errorTracking.enabled` | `ingestion-error-tracking`, `cymbal`, `cymbal-resolution` (needs `objectStorage.enabled`, `redis.cdpHost`) |
+| `features.logs.enabled` | `ingestion-logs` (needs `redis.logsHost`, `redis.cdpHost`) |
 | `features.traces.enabled` | `ingestion-traces` |
 | `features.aiCapture.enabled` | `capture-ai` |
 | `features.captureLogs.enabled` | `capture-logs` (OTLP) |

@@ -91,6 +91,11 @@ redis:
   # Cookieless hashing Redis for feature-flags — image defaults to 127.0.0.1
   cookielessHost: ""
   cookielessPort: 6379
+  # Logs Redis (ingestion-logs, plugins) — image defaults to 127.0.0.1.
+  # Required when features.logs.enabled.
+  logsHost: ""
+  logsPort: 6379
+  logsTls: false
 
 clickhouse:
   host: "clickhouse"
@@ -103,6 +108,17 @@ clickhouse:
   verify: false
   # CA certificate for TLS (omit if not using TLS)
   ca: ""
+  # Logs product (Django side). Every key defaults to the matching
+  # clickhouse.* value above; set only what differs.
+  # logs:
+  #   host: ""
+  #   port: 9000
+  #   user: ""
+  #   password: ""
+  #   database: ""
+  #   cluster: ""
+  #   secure: false
+  logs: {}
   # For single standalone ClickHouse, set cluster to a
   # 1-shard-1-replica name and ensure no ZooKeeper is configured.
   # Replicated tables will NOT be used; MergeTree engines only.
@@ -124,6 +140,8 @@ objectStorage:
   bucket: "posthog"
   # Leave endpoint empty for AWS default + IAM role auth
   # (omit accessKeyId / secretAccessKey too)
+  # Set true for RustFS, MinIO, SeaweedFS and other path-style S3 servers.
+  # Required by features.errorTracking (source maps / symbol sets).
   forcePathStyle: false
 
 # =============================================================================
@@ -181,11 +199,13 @@ features:
       secretAccessKey: ""
       bucket: ""
 
-  # Error tracking: ingestion-error-tracking, cymbal
+  # Error tracking: ingestion-error-tracking, cymbal, cymbal-resolution
+  # Requires objectStorage.enabled and redis.cdpHost.
   errorTracking:
     enabled: false
 
   # Logs product: ingestion-logs
+  # Requires redis.logsHost and redis.cdpHost.
   logs:
     enabled: false
 
@@ -198,6 +218,7 @@ features:
     enabled: false
 
   # OTLP ingestion: capture-logs
+  # Requires secrets.jwtSecret.
   captureLogs:
     enabled: false
 
@@ -488,6 +509,13 @@ ingestionErrorTracking:
   affinity: {}
 
 cymbal:
+  replicas: 1
+  autoscaling: {}
+  resources: {}
+  extraEnv: {}
+  affinity: {}
+
+cymbalResolution:
   replicas: 1
   autoscaling: {}
   resources: {}

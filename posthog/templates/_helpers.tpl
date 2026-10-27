@@ -216,6 +216,23 @@ Django (web/worker) environment — shared base env vars.
 - name: CLICKHOUSE_CA
   value: {{ $root.Values.clickhouse.ca | quote }}
 {{- end }}
+{{- $logsCh := $root.Values.clickhouse.logs | default dict }}
+- name: CLICKHOUSE_LOGS_HOST
+  value: {{ $logsCh.host | default $root.Values.clickhouse.host | quote }}
+- name: CLICKHOUSE_LOGS_CLUSTER
+  value: {{ $logsCh.cluster | default $root.Values.clickhouse.cluster | quote }}
+- name: CLICKHOUSE_LOGS_CLUSTER_HOST
+  value: {{ $logsCh.host | default $root.Values.clickhouse.host | quote }}
+- name: CLICKHOUSE_LOGS_CLUSTER_PORT
+  value: {{ $logsCh.port | default $root.Values.clickhouse.port | quote }}
+- name: CLICKHOUSE_LOGS_CLUSTER_USER
+  value: {{ $logsCh.user | default $root.Values.clickhouse.user | quote }}
+- name: CLICKHOUSE_LOGS_CLUSTER_PASSWORD
+  value: {{ $logsCh.password | default $root.Values.clickhouse.password | quote }}
+- name: CLICKHOUSE_LOGS_CLUSTER_DATABASE
+  value: {{ $logsCh.database | default $root.Values.clickhouse.database | quote }}
+- name: CLICKHOUSE_LOGS_CLUSTER_SECURE
+  value: {{ if hasKey $logsCh "secure" }}{{ $logsCh.secure | quote }}{{ else }}{{ $root.Values.clickhouse.secure | quote }}{{ end }}
 - name: KAFKA_HOSTS
   value: {{ $root.Values.kafka.hosts | quote }}
 {{- if $root.Values.kafka.securityProtocol }}
@@ -307,6 +324,14 @@ Node.js ingestion services — shared base env vars.
 - name: CDP_REDIS_PORT
   value: {{ .Values.redis.cdpPort | default "6379" | quote }}
 {{- end }}
+{{- if .Values.redis.logsHost }}
+- name: LOGS_REDIS_HOST
+  value: {{ .Values.redis.logsHost | quote }}
+- name: LOGS_REDIS_PORT
+  value: {{ .Values.redis.logsPort | default "6379" | quote }}
+- name: LOGS_REDIS_TLS
+  value: {{ .Values.redis.logsTls | default false | quote }}
+{{- end }}
 - name: ENCRYPTION_SALT_KEYS
   valueFrom:
     secretKeyRef:
@@ -365,4 +390,24 @@ Rust services — shared base env vars.
 {{- end }}
 - name: RUST_LOG
   value: {{ .Values.logging.level | quote }}
+{{- end }}
+
+{{/*
+Cymbal object storage env (symbol sets / source maps). Shared by cymbal and cymbal-resolution.
+*/}}
+{{- define "posthog.cymbal.objectStorageEnv" -}}
+- name: OBJECT_STORAGE_BUCKET
+  value: {{ .Values.objectStorage.bucket | quote }}
+- name: OBJECT_STORAGE_ACCESS_KEY_ID
+  value: {{ .Values.objectStorage.accessKeyId | quote }}
+- name: OBJECT_STORAGE_SECRET_ACCESS_KEY
+  value: {{ .Values.objectStorage.secretAccessKey | quote }}
+- name: OBJECT_STORAGE_ENDPOINT
+  value: {{ .Values.objectStorage.endpoint | quote }}
+- name: OBJECT_STORAGE_FORCE_PATH_STYLE
+  value: {{ .Values.objectStorage.forcePathStyle | quote }}
+{{- if .Values.objectStorage.region }}
+- name: OBJECT_STORAGE_REGION
+  value: {{ .Values.objectStorage.region | quote }}
+{{- end }}
 {{- end }}

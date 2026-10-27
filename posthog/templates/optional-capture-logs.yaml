@@ -29,6 +29,14 @@ spec:
           env:
             - name: KAFKA_HOSTS
               value: {{ .Values.kafka.hosts | quote }}
+            - name: KAFKA_TOPIC
+              value: "logs_ingestion"
+            - name: KAFKA_METRICS_TOPIC
+              value: "metrics_ingestion"
+            {{- if .Values.kafka.securityProtocol }}
+            - name: KAFKA_SECURITY_PROTOCOL
+              value: {{ .Values.kafka.securityProtocol | quote }}
+            {{- end }}
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
