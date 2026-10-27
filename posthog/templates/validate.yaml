@@ -1,0 +1,19 @@
+{{- if .Values.features.errorTracking.enabled }}
+{{- if not .Values.objectStorage.enabled }}
+{{- fail "features.errorTracking requires objectStorage.enabled=true (symbol sets / source maps)" }}
+{{- end }}
+{{- if not .Values.redis.cdpHost }}
+{{- fail "features.errorTracking requires redis.cdpHost" }}
+{{- end }}
+{{- end }}
+{{- if .Values.features.logs.enabled }}
+{{- if not .Values.redis.logsHost }}
+{{- fail "features.logs requires redis.logsHost" }}
+{{- end }}
+{{- if not .Values.redis.cdpHost }}
+{{- fail "features.logs requires redis.cdpHost" }}
+{{- end }}
+{{- end }}
+{{- if and .Values.features.captureLogs.enabled (not .Values.secrets.jwtSecret) }}
+{{- fail "features.captureLogs requires secrets.jwtSecret" }}
+{{- end }}
