@@ -30,7 +30,19 @@ spec:
         - name: migrate-postgres
           image: "{{ .Values.image.app.repository }}:{{ .Values.image.app.tag }}"
           imagePullPolicy: {{ .Values.image.app.pullPolicy }}
-          {{- if .Values.migration.persons.enabled }}
+          {{- if and .Values.migration.persons.enabled .Values.migration.persons.extraSql }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              ./bin/migrate --scope=postgres --scope=persons && python - <<'PY'
+              import json, os, psycopg
+              # autocommit: CREATE INDEX CONCURRENTLY cannot run in a transaction.
+              with psycopg.connect(os.environ["PERSONS_DB_WRITER_URL"], autocommit=True) as conn:
+                  for sql in json.loads(os.environ["PERSONS_EXTRA_SQL"]):
+                      print("Running:", sql, flush=True)
+                      conn.execute(sql)
+              PY
+          {{- else if .Values.migration.persons.enabled }}
           command: ["./bin/migrate", "--scope=postgres", "--scope=persons"]
           {{- else }}
           command: ["./bin/migrate", "--scope=postgres"]
@@ -47,6 +59,10 @@ spec:
             {{- end }}
             - name: PERSONS_DB_WRITER_URL
               value: {{ coalesce .Values.postgres.personsUrl .Values.postgres.url | quote }}
+            {{- if .Values.migration.persons.extraSql }}
+            - name: PERSONS_EXTRA_SQL
+              value: {{ .Values.migration.persons.extraSql | toJson | quote }}
+            {{- end }}
             {{- end }}
             {{- with .Values.migration.extraEnv }}
             {{- toYaml . | nindent 12 }}

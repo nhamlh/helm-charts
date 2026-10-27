@@ -434,6 +434,14 @@ migration:
   # partitioned and migrated by sqlx.
   persons:
     enabled: false
+    # SQL statements run after the persons migrations, in order, in autocommit
+    # mode against the persons DB (so CREATE INDEX CONCURRENTLY works). Must be
+    # idempotent: the job retries. Hobby mode skips the partitioning migrations,
+    # which are the only place the unique (team_id, uuid) index on posthog_person
+    # is created, and ingestion needs it for ON CONFLICT (team_id, uuid):
+    #   extraSql:
+    #     - CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS posthog_person_team_id_uuid_idx ON posthog_person (team_id, uuid)
+    extraSql: []
   resources: {}
   extraEnv: {}
   backoffLimit: 6
