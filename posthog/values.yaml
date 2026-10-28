@@ -22,6 +22,12 @@ image:
     repository: ghcr.io/posthog/posthog/capture
     tag: master
     pullPolicy: IfNotPresent
+  # OTLP ingestion for features.captureLogs. A separate image: the capture
+  # image only contains the `capture` binary.
+  captureLogs:
+    repository: ghcr.io/posthog/posthog/capture-logs
+    tag: master
+    pullPolicy: IfNotPresent
   featureFlags:
     repository: ghcr.io/posthog/posthog/feature-flags
     tag: master

@@ -24,8 +24,8 @@ spec:
       serviceAccountName: {{ include "posthog.serviceAccountName" . }}
       containers:
         - name: {{ $component }}
-          image: "{{ .Values.image.capture.repository }}:{{ .Values.image.capture.tag }}"
-          imagePullPolicy: {{ .Values.image.capture.pullPolicy }}
+          image: "{{ .Values.image.captureLogs.repository }}:{{ .Values.image.captureLogs.tag }}"
+          imagePullPolicy: {{ .Values.image.captureLogs.pullPolicy }}
           env:
             - name: KAFKA_HOSTS
               value: {{ .Values.kafka.hosts | quote }}
