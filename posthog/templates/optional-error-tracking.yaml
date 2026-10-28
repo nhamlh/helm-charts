@@ -33,8 +33,9 @@ spec:
               value: "ingestion-errortracking"
             - name: HTTP_SERVER_PORT
               value: "6741"
+            {{- /* Fully qualified: the cymbal client uses dns.resolve4, which ignores the pod's search domains. */}}
             - name: ERROR_TRACKING_CYMBAL_BASE_URL
-              value: "http://{{ include "posthog.component.fullname" (dict "component" "cymbal" "Chart" .Chart "Release" .Release "Values" .Values) }}:3302"
+              value: "http://{{ include "posthog.component.fullname" (dict "component" "cymbal" "Chart" .Chart "Release" .Release "Values" .Values) }}.{{ .Release.Namespace }}.svc.cluster.local:3302"
             {{- with .Values.ingestionErrorTracking.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
