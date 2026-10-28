@@ -64,14 +64,26 @@ spec:
                 {{- if .Values.features.errorTracking.enabled }}
                 clickhouse_error_tracking_fingerprint_issue_state \
                 clickhouse_error_tracking_issue_fingerprint \
+                clickhouse_error_tracking_issue_fingerprint_overrides \
                 error_tracking_ingestion_notifications \
+                ingestion-errortracking-main \
+                ingestion-errortracking-main-dlq \
+                ingestion-errortracking-overflow \
                 {{- end }}
                 {{- if or .Values.features.logs.enabled .Values.features.captureLogs.enabled }}
                 logs_ingestion \
+                logs_ingestion_dlq \
+                logs_ingestion_overflow \
                 metrics_ingestion \
                 clickhouse_logs \
                 clickhouse_metrics \
                 plugin_log_entries \
+                {{- end }}
+                {{- if .Values.features.traces.enabled }}
+                ingestion-traces \
+                ingestion-traces-dlq \
+                ingestion-traces-overflow \
+                clickhouse_traces \
                 {{- end }}
                 "
               for topic in $TOPICS; do
